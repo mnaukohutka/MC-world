@@ -1,0 +1,30 @@
+{
+  "format_version": "1.21.110",
+  "minecraft:client_biome": {
+    "description": {
+      "identifier": "pa:copper_moutain"
+    },
+    "components": {
+      "minecraft:biome_music": {
+        "volume_multiplier": 0.4,
+        "music_definition": "game"
+      },
+      "minecraft:foliage_appearance": {
+        "color": "#878d76"
+      },
+      "minecraft:grass_appearance": {
+        "color": "#10eb6d"
+      },
+      "minecraft:sky_color": {
+        "sky_color": "#d2921d"
+      },
+      "minecraft:water_appearance": {
+        "surface_color": "#2c895c",
+        "surface_opacity": 1.0
+      },
+      "minecraft:fog_appearance": {
+        "fog_identifier": "minecraft:fog_birch_forest_hills"
+      }
+    }
+  }
+}

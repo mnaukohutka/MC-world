@@ -1,0 +1,38 @@
+{
+  "resource_pack_name": "vanilla",
+  "texture_name": "atlas.terrain",
+  "padding": 8,
+  "num_mip_levels": 4,
+  "texture_data": {
+    "pa_copper_wood_up": {
+      "textures": "textures/blocks/pa_copper_wood_up"
+    },
+    "pa_copper_portal": {
+      "textures": [
+        "textures/blocks/pa_copper_portal"
+      ]
+    },
+    "pa_copper_wood_down": {
+      "textures": "textures/blocks/pa_copper_wood_down"
+    },
+    "pa_copper_wood_side": {
+      "textures": "textures/blocks/pa_copper_wood_side"
+    },
+    "ani_dimension_copper_portal": {
+      "textures": "textures/blocks/dimension_copper_portal"
+    },
+    "pa_custom_sapling_copper": {
+      "textures": [
+        "textures/blocks/pa_custom_sapling_copper"
+      ]
+    },
+    "pa_fluid_copper": {
+      "textures": [
+        "textures/blocks/pa_fluid_copper"
+      ]
+    },
+    "pa_fluid_copper_oxidized": {
+      "textures": "textures/blocks/pa_fluid_copper_oxidized"
+    }
+  }
+}

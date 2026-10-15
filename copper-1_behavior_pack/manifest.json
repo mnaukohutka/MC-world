@@ -1,0 +1,61 @@
+{
+  "format_version": 2,
+  "header": {
+    "description": "Copper Dimension",
+    "name": "copper-1",
+    "uuid": "66018907-ddf7-43ac-ac13-f276bcf92b69",
+    "version": [
+      1,
+      0,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      20,
+      10
+    ]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "cb8ab6aa-8089-499f-89cf-b9f505e6c937",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "type": "script",
+      "uuid": "a56eb6e4-f55c-48cc-8c06-72af05410df7",
+      "version": [
+        1,
+        0,
+        0
+      ],
+      "entry": "scripts/main.js",
+      "language": "javascript"
+    }
+  ],
+  "dependencies": [
+    {
+      "version": "2.8.0",
+      "module_name": "@minecraft/server"
+    },
+    {
+      "version": "2.1.0",
+      "module_name": "@minecraft/server-ui"
+    }
+  ],
+  "metadata": {
+    "authors": [
+      "ron_w"
+    ],
+    "generated_with": {
+      "MAM": [
+        "4.0.6"
+      ]
+    },
+    "url": "https://addonsmaker.com/"
+  }
+}

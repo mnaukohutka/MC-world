@@ -1,0 +1,38 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:block": {
+    "description": {
+      "identifier": "pa:dimension_copper_portal",
+      "states": {
+        "pa:axis": [
+          "x",
+          "z"
+        ]
+      }
+    },
+    "components": {
+      "minecraft:geometry": "geometry.dimension_portal",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "ani_dimension_copper_portal",
+          "render_method": "blend",
+          "face_dimming": false,
+          "ambient_occlusion": 0
+        }
+      },
+      "minecraft:collision_box": false,
+      "minecraft:selection_box": false,
+      "minecraft:light_emission": 11,
+      "minecraft:destructible_by_mining": false,
+      "minecraft:destructible_by_explosion": false
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('pa:axis') == 'z'",
+        "components": {
+          "minecraft:geometry": "geometry.dimension_portal_z"
+        }
+      }
+    ]
+  }
+}

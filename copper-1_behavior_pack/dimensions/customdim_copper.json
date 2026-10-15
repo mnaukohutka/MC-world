@@ -1,0 +1,19 @@
+{
+  "format_version": "1.21.0",
+  "minecraft:dimension": {
+    "description": {
+      "identifier": "minecraft:overworld"
+    },
+    "components": {
+      "minecraft:generation": {
+        "generator_type": "overworld",
+        "biome_source": {
+          "preset": "vanilla_overworld",
+          "biome_size": [4, 4, 4],
+          "biome_zoom": [0, 1, 2],
+          "biome_edge": 0
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+[
+  {
+    "flipbook_texture": "textures/blocks/dimension_copper_portal",
+    "atlas_tile": "ani_dimension_copper_portal",
+    "ticks_per_frame": 4
+  }
+]

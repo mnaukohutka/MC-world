@@ -1,0 +1,1 @@
+give @s minecraft:fluid_copper

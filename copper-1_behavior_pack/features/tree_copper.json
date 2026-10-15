@@ -1,0 +1,140 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:tree_feature": {
+    "description": {
+      "identifier": "pa:tree_copper"
+    },
+    "may_grow_on": [
+      "minecraft:coarse_dirt",
+      "minecraft:dirt",
+      "minecraft:dirt_with_roots",
+      "minecraft:farmland",
+      "minecraft:grass_block",
+      "minecraft:moss_block",
+      "minecraft:mud",
+      "minecraft:muddy_mangrove_roots",
+      "minecraft:mycelium",
+      "minecraft:pale_moss_block",
+      "minecraft:podzol",
+      "minecraft:copper_grate",
+      "minecraft:exposed_copper_grate",
+      "minecraft:oxidized_copper_grate",
+      "minecraft:waxed_copper_grate",
+      "minecraft:waxed_exposed_copper_grate",
+      "minecraft:waxed_oxidized_copper_grate",
+      "minecraft:waxed_weathered_copper_grate",
+      "minecraft:weathered_copper_grate"
+    ],
+    "base_block": [
+      "minecraft:copper_block",
+      "minecraft:raw_copper_block",
+      "minecraft:chiseled_copper",
+      "minecraft:copper_bulb",
+      "minecraft:cut_copper",
+      "minecraft:double_cut_copper_slab",
+      "minecraft:exposed_chiseled_copper",
+      "minecraft:exposed_copper",
+      "minecraft:exposed_copper_bulb",
+      "minecraft:exposed_cut_copper",
+      "minecraft:exposed_double_cut_copper_slab",
+      "minecraft:oxidized_chiseled_copper",
+      "minecraft:oxidized_copper",
+      "minecraft:oxidized_copper_bulb",
+      "minecraft:oxidized_cut_copper",
+      "minecraft:oxidized_double_cut_copper_slab",
+      "minecraft:waxed_copper_block",
+      "minecraft:waxed_chiseled_copper",
+      "minecraft:waxed_copper_bulb",
+      "minecraft:waxed_cut_copper",
+      "minecraft:waxed_exposed_chiseled_copper",
+      "minecraft:waxed_double_cut_copper_slab",
+      "minecraft:waxed_exposed_copper",
+      "minecraft:waxed_exposed_copper_bulb",
+      "minecraft:waxed_exposed_cut_copper",
+      "minecraft:waxed_exposed_double_cut_copper_slab",
+      "minecraft:waxed_oxidized_chiseled_copper",
+      "minecraft:waxed_oxidized_copper",
+      "minecraft:waxed_oxidized_copper_bulb",
+      "minecraft:waxed_oxidized_cut_copper",
+      "minecraft:waxed_weathered_copper",
+      "minecraft:waxed_weathered_chiseled_copper",
+      "minecraft:waxed_oxidized_double_cut_copper_slab",
+      "minecraft:waxed_weathered_copper_bulb",
+      "minecraft:waxed_weathered_cut_copper",
+      "minecraft:waxed_weathered_double_cut_copper_slab",
+      "minecraft:weathered_chiseled_copper",
+      "minecraft:weathered_copper",
+      "minecraft:weathered_copper_bulb",
+      "minecraft:weathered_cut_copper",
+      "minecraft:weathered_double_cut_copper_slab"
+    ],
+    "may_grow_through": [
+      "minecraft:coarse_dirt",
+      "minecraft:dirt",
+      "minecraft:dirt_with_roots",
+      "minecraft:farmland",
+      "minecraft:grass_block",
+      "minecraft:moss_block",
+      "minecraft:mud",
+      "minecraft:muddy_mangrove_roots",
+      "minecraft:mycelium",
+      "minecraft:pale_moss_block",
+      "minecraft:podzol"
+    ],
+    "may_replace": [
+      "minecraft:air",
+      "minecraft:snow_layer",
+      "minecraft:acacia_leaves",
+      "minecraft:azalea_leaves",
+      "minecraft:azalea_leaves_flowered",
+      "minecraft:birch_leaves",
+      "minecraft:cherry_leaves",
+      "minecraft:dark_oak_leaves",
+      "minecraft:jungle_leaves",
+      "minecraft:mangrove_leaves",
+      "minecraft:oak_leaves",
+      "minecraft:pale_oak_leaves",
+      "minecraft:spruce_leaves",
+      "minecraft:wildflowers",
+      "minecraft:leaf_litter"
+    ],
+    "acacia_canopy": {
+      "canopy_size": 3,
+      "leaf_block": "minecraft:acacia_leaves",
+      "simplify_canopy": false
+    },
+    "acacia_trunk": {
+      "trunk_width": 1,
+      "trunk_height": {
+        "base": 6,
+        "min_height_for_canopy": 2
+      },
+      "trunk_lean": {
+        "allow_diagonal_growth": true,
+        "lean_height": {
+          "range_min": 1,
+          "range_max": 5
+        },
+        "lean_steps": {
+          "range_min": 1,
+          "range_max": 4
+        }
+      },
+      "trunk_block": "pa:copper_wood"
+    },
+    "base_cluster": {
+      "may_replace": [
+        "minecraft:copper_chest",
+        "minecraft:oxidized_copper_chest",
+        "minecraft:trapped_chest",
+        "minecraft:waxed_copper_chest",
+        "minecraft:waxed_exposed_copper_chest",
+        "minecraft:waxed_oxidized_copper_chest",
+        "minecraft:waxed_weathered_copper_chest",
+        "minecraft:weathered_copper_chest"
+      ],
+      "num_clusters": 5,
+      "cluster_radius": 2
+    }
+  }
+}

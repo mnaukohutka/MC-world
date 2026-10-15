@@ -1,0 +1,51 @@
+{
+  "format_version": 2,
+  "header": {
+    "description": "an experiment by ron_w",
+    "name": "copper-1",
+    "uuid": "3095d6c8-fa06-4c43-ba49-6a9999f5fa40",
+    "version": [
+      1,
+      0,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      20,
+      10
+    ]
+  },
+  "modules": [
+    {
+      "description": "an experiment by ron_w",
+      "type": "resources",
+      "uuid": "765a984c-1651-47e4-a852-18635df1e576",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "uuid": "66018907-ddf7-43ac-ac13-f276bcf92b69",
+      "version": [
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "metadata": {
+    "authors": [
+      "ron_w"
+    ],
+    "generated_with": {
+      "MAM": [
+        "4.0.6"
+      ]
+    },
+    "url": "https://addonsmaker.com/"
+  }
+}

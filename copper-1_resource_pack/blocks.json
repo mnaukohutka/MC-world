@@ -1,0 +1,23 @@
+{
+  "format_version": [
+    1,
+    1,
+    0
+  ],
+  "minecraft:copper_portal": {
+    "sound": "copper_bulb"
+  },
+  "minecraft:copper_wood": {
+    "sound": "copper"
+  },
+  "minecraft:fluid_copper": {
+    "sound": "normal"
+  },
+  "minecraft:custom_sapling_copper": {
+    "sound": "normal"
+  },
+  "minecraft:fluid_copper_oxidized": {
+    "textures": "pa_fluid_copper_oxidized",
+    "sound": "slime"
+  }
+}

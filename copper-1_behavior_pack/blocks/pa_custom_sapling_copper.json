@@ -1,0 +1,94 @@
+{
+  "format_version": "1.20.50",
+  "minecraft:block": {
+    "description": {
+      "identifier": "pa:custom_sapling_copper",
+      "menu_category": {
+        "category": "none"
+      }
+    },
+    "components": {
+      "minecraft:flammable": {
+        "catch_chance_modifier": 5,
+        "destroy_chance_modifier": 20
+      },
+      "minecraft:collision_box": false,
+      "minecraft:light_dampening": 0,
+      "minecraft:destructible_by_mining": true,
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 0.0
+      },
+      "minecraft:geometry": "geometry.custom_sapling",
+      "minecraft:loot": "loot_tables/blocks/pa_custom_sapling_copper.json",
+      "minecraft:map_color": {
+        "color": "#FFFFFF",
+        "tint_method": "default_foliage"
+      },
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "pa_custom_sapling_copper",
+          "render_method": "alpha_test_to_opaque",
+          "tint_method": "default_foliage"
+        }
+      },
+      "minecraft:placement_filter": {
+        "conditions": [
+          {
+            "block_filter": [
+              "minecraft:copper_block",
+              "minecraft:raw_copper_block",
+              "minecraft:chiseled_copper",
+              "minecraft:copper_bulb",
+              "minecraft:cut_copper",
+              "minecraft:double_cut_copper_slab",
+              "minecraft:exposed_chiseled_copper",
+              "minecraft:exposed_copper",
+              "minecraft:exposed_copper_bulb",
+              "minecraft:exposed_cut_copper",
+              "minecraft:exposed_copper_grate",
+              "minecraft:exposed_double_cut_copper_slab",
+              "minecraft:oxidized_chiseled_copper",
+              "minecraft:oxidized_copper",
+              "minecraft:oxidized_copper_bulb",
+              "minecraft:oxidized_copper_grate",
+              "minecraft:oxidized_cut_copper",
+              "minecraft:oxidized_double_cut_copper_slab",
+              "minecraft:waxed_copper_block",
+              "minecraft:waxed_chiseled_copper",
+              "minecraft:waxed_copper_bulb",
+              "minecraft:waxed_copper_grate",
+              "minecraft:waxed_cut_copper",
+              "minecraft:waxed_exposed_chiseled_copper",
+              "minecraft:waxed_exposed_copper",
+              "minecraft:waxed_double_cut_copper_slab",
+              "minecraft:waxed_exposed_copper_bulb",
+              "minecraft:waxed_exposed_copper_grate",
+              "minecraft:waxed_exposed_cut_copper",
+              "minecraft:waxed_exposed_double_cut_copper_slab",
+              "minecraft:waxed_oxidized_chiseled_copper",
+              "minecraft:waxed_oxidized_copper",
+              "minecraft:waxed_oxidized_copper_bulb",
+              "minecraft:waxed_oxidized_copper_grate",
+              "minecraft:waxed_oxidized_cut_copper",
+              "minecraft:waxed_oxidized_double_cut_copper_slab",
+              "minecraft:waxed_weathered_chiseled_copper",
+              "minecraft:waxed_weathered_copper",
+              "minecraft:waxed_weathered_copper_bulb",
+              "minecraft:waxed_weathered_copper_grate",
+              "minecraft:waxed_weathered_double_cut_copper_slab",
+              "minecraft:waxed_weathered_cut_copper",
+              "minecraft:weathered_copper",
+              "minecraft:weathered_copper_bulb",
+              "minecraft:weathered_cut_copper",
+              "minecraft:weathered_copper_grate",
+              "minecraft:weathered_double_cut_copper_slab"
+            ],
+            "allowed_faces": [
+              "up"
+            ]
+          }
+        ]
+      },
+    }
+  }
+}

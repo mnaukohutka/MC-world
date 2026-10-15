@@ -1,0 +1,30 @@
+{
+  "format_version": "1.21.110",
+  "minecraft:client_biome": {
+    "description": {
+      "identifier": "pa:copper_ocean"
+    },
+    "components": {
+      "minecraft:biome_music": {
+        "volume_multiplier": 0.4,
+        "music_definition": "ocean"
+      },
+      "minecraft:foliage_appearance": {
+        "color": "#4a7c2f"
+      },
+      "minecraft:grass_appearance": {
+        "color": "#8a9c41"
+      },
+      "minecraft:sky_color": {
+        "sky_color": "#d2921d"
+      },
+      "minecraft:water_appearance": {
+        "surface_color": "#2c895c",
+        "surface_opacity": 1.0
+      },
+      "minecraft:fog_appearance": {
+        "fog_identifier": "minecraft:fog_ocean"
+      }
+    }
+  }
+}
