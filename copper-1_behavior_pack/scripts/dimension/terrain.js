@@ -27,9 +27,35 @@ const GRASS = "pa:copper_grass";
 const LEAVES = "pa:copper_leaves";
 const LOG = "pa:copper_wood";
 
-const stone = BlockPermutation.resolve(STONE);
-const grass = BlockPermutation.resolve(GRASS);
-const leaves = BlockPermutation.resolve(LEAVES);
+/*
+ * Resolved on first use rather than at module scope. `BlockPermutation.resolve`
+ * is a native call that the engine rejects during early execution, which is when
+ * every script module is first evaluated — calling it at the top level throws
+ * and takes the rest of `main.js` down with it, so nothing subscribes and no
+ * custom component is ever registered.
+ */
+const permutationCache = new Map();
+
+function permutation(typeId) {
+  let cached = permutationCache.get(typeId);
+  if (!cached) {
+    cached = BlockPermutation.resolve(typeId);
+    permutationCache.set(typeId, cached);
+  }
+  return cached;
+}
+
+function stone() {
+  return permutation(STONE);
+}
+
+function grass() {
+  return permutation(GRASS);
+}
+
+function leaves() {
+  return permutation(LEAVES);
+}
 
 let seed = 0;
 const generated = new Set();
@@ -120,10 +146,10 @@ function buildTile(dimension, tileX, tileZ) {
       const top = surfaceHeight(x, z);
       const bottom = Math.max(MIN_Y + 1, Math.min(top - MIN_GROUND, MIN_Y + BOTTOM_MARGIN));
       columnTops[dx * TILE + dz] = top;
-      dimension.fillBlocks(new BlockVolume({ x, y: bottom, z }, { x, y: top - 1, z }), stone, {
+      dimension.fillBlocks(new BlockVolume({ x, y: bottom, z }, { x, y: top - 1, z }), stone(), {
         ignoreChunkBoundErrors: true,
       });
-      dimension.getBlock({ x, y: top, z })?.setPermutation(grass);
+      dimension.getBlock({ x, y: top, z })?.setPermutation(grass());
     }
   }
 
@@ -151,11 +177,11 @@ function placeTree(dimension, x, groundY, z) {
       for (let oz = -radius; oz <= radius; oz++) {
         if (ox === 0 && oz === 0 && dy <= 0) continue;
         const block = dimension.getBlock({ x: x + ox, y: top + dy, z: z + oz });
-        if (block && block.isAir) block.setPermutation(leaves);
+        if (block && block.isAir) block.setPermutation(leaves());
       }
     }
   }
-  dimension.getBlock({ x, y: top + 1, z })?.setPermutation(leaves);
+  dimension.getBlock({ x, y: top + 1, z })?.setPermutation(leaves());
 }
 
 async function runQueue(dimension) {
@@ -229,7 +255,7 @@ export function buildSpawnPad(dimension, spawn) {
       { x: spawn.x - radius, y: spawn.y - 5, z: spawn.z - radius },
       { x: spawn.x + radius, y: spawn.y - 1, z: spawn.z + radius }
     ),
-    stone,
+    stone(),
     { ignoreChunkBoundErrors: true }
   );
   dimension.fillBlocks(
@@ -237,7 +263,7 @@ export function buildSpawnPad(dimension, spawn) {
       { x: spawn.x - radius, y: spawn.y, z: spawn.z - radius },
       { x: spawn.x + radius, y: spawn.y, z: spawn.z + radius }
     ),
-    grass,
+    grass(),
     { ignoreChunkBoundErrors: true }
   );
 }
