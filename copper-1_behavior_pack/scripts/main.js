@@ -8,4 +8,6 @@
  */
 import "./dimension/main_dimension";
 import "./block_trigger";
+import "./copper_fluid";
+import "./structures";
 import "./fluid_interactions";

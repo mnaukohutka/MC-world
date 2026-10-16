@@ -1,94 +1,144 @@
-import { system, world } from "@minecraft/server";
+import { world } from "@minecraft/server";
 
 /*
- * Structure generator pro copper dimenzi.
+ * Points of interest for the Copper Dimension.
+ *
+ * The dimension is infinite, so the old design — a timer that rolled a structure
+ * next to whichever player happened to be online — left the world almost empty
+ * and could drop a build on top of the player who triggered the roll. This
+ * module works from the tile instead: every 16x16 tile the terrain generator
+ * finishes is offered here, and each region (a block of tiles) decides from its
+ * coordinates alone what belongs in it. Two players walking the same ground
+ * therefore see the same world, and the plan does not depend on anyone watching.
+ *
+ * The builds are the pack's own `.mcstructure` files under `structures/`, which
+ * the game exposes as `mystructure:<name>`.
  */
 
-const STRUCTURE_INTERVAL = 12000;
-const COPPER_DIMENSION = "pa:copper_dimension";
+const REGION = 8;            // tiles per region; a region gets one build
+const VILLAGE_CHANCE = 0.18;
+const SPECIAL_CHANCE = 0.22;
+const CHEST_CHANCE = 0.05;
 
-const VANILLA_STRUCTURES = [
-  ["minecraft:village_plains", 0.25, 100],
-  ["minecraft:village_desert", 0.15, 150],
-  ["minecraft:village_snowy", 0.1, 200],
-  ["minecraft:village_taiga", 0.1, 200],
-  ["minecraft:ancient_city", 0.06, 300],
-  ["minecraft:trial_chambers", 0.08, 250],
-  ["minecraft:pillager_outpost", 0.1, 180],
-  ["minecraft:ruined_portal", 0.12, 50],
-  ["minecraft:stronghold", 0.04, 400],
+/** The pack's own builds. Vanilla camps have no reachable structure id, so the
+ * copper builds double as the dimension's landmarks. */
+const BUILDS = [
+  "copper_temple",
+  "copper_fontana",
+  "copper_lucerna-p",
+  "copper_lucerna-A",
+  "copper_lucerna-A1",
+  "copper_lucerna-P1",
 ];
 
-const SPECIAL_STRUCTURES = [
-  ["copper_temple", 0.08, 250],
-  ["copper_fontana", 0.05, 200],
-  ["copper_lucerna-p", 0.06, 150],
-  ["copper_lucerna-A", 0.06, 150],
-  ["copper_lucerna-A1", 0.06, 150],
-  ["copper_lucerna-P1", 0.06, 150],
-];
+/** A temple is the closest thing the pack ships to a village centre. */
+const VILLAGE_BUILD = "copper_temple";
 
-function tryPlaceStructure(dim, structureId, x, y, z) {
+const SALT_CHEST = 0x9e37;
+
+const done = new Set();
+const planned = new Set();
+let seed = 0;
+
+function key(x, z) {
+  return `${x},${z}`;
+}
+
+/** Same FNV-1a as terrain.js, so both agree on the world. */
+export function seedPoints(worldSeed) {
+  let h = 0x811c9dc5;
+  for (const ch of String(worldSeed)) {
+    h ^= ch.charCodeAt(0);
+    h = Math.imul(h, 0x01000193);
+  }
+  seed = h | 0;
+  done.clear();
+  planned.clear();
+}
+
+function random(x, z, salt) {
+  let h = Math.imul(x, 0x165667b1);
+  h = (h + Math.imul(z, 0x27d4eb2f)) | 0;
+  h = (h + Math.imul(seed ^ salt, 0x55fdc781)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 0x4bf19f61);
+  return ((h ^ (h >>> 16)) >>> 0) / 0xffffffff;
+}
+
+function pick(list, x, z, salt) {
+  return list[Math.floor(random(x, z, salt) * list.length) % list.length];
+}
+
+/** A short, deterministic orientation derived from the same noise. */
+function rotationFor(x, z) {
+  const options = ["None", "Rotate90", "Rotate180", "Rotate270"];
+  return options[Math.floor(random(x, z, 0x77) * 4) % 4];
+}
+
+function groundY(dimension, x, z) {
   try {
-    dim.runCommand(`structure load "${structureId}" ${x} ${y} ${z}`);
-    return true;
-  } catch (e) {
-    return false;
+    const top = dimension.getTopmostBlock({ x, z });
+    return top ? top.location.y + 1 : undefined;
+  } catch {
+    return undefined;
   }
 }
 
-function findSurface(dim, x, z) {
-  for (let y = 320; y > -64; y--) {
-    const block = dim.getBlock({ x, y, z });
-    if (block && !block.isAir) return y;
+function placeBuild(dimension, id, x, y, z) {
+  try {
+    world.structureManager.place(`mystructure:${id}`, dimension, { x, y, z }, {
+      rotation: rotationFor(x, z),
+      includeEntities: true,
+    });
+  } catch (error) {
+    console.warn(`[copper] could not place "${id}" at ${x},${y},${z}: ${error}`);
   }
-  return -64;
 }
 
-let dimCache = null;
-let dimErrorCount = 0;
+function placeChest(dimension, x, y, z) {
+  try {
+    dimension.getBlock({ x, y, z })?.setType("minecraft:copper_chest");
+  } catch {
+    // Chunk left the loading window; the terrain pass rebuilds the tile later.
+  }
+}
 
-system.runInterval(() => {
-  if (!dimCache) {
-    try {
-      dimCache = world.getDimension(COPPER_DIMENSION);
-      dimErrorCount = 0;
-    } catch (e) {
-      dimErrorCount++;
-      if (dimErrorCount === 1) {
-        console.warn("[copper-1] Dimension not available yet, retrying...");
+function populate(dimension, tileX, tileZ) {
+  const regionX = Math.floor(tileX / REGION);
+  const regionZ = Math.floor(tileZ / REGION);
+  const regionKey = key(regionX, regionZ);
+
+  if (!planned.has(regionKey)) {
+    planned.add(regionKey);
+    const roll = random(regionX, regionZ, 0x11);
+    const anchorX = regionX * REGION * 16 + 8;
+    const anchorZ = regionZ * REGION * 16 + 8;
+    const y = groundY(dimension, anchorX, anchorZ);
+
+    if (y !== undefined) {
+      if (roll < VILLAGE_CHANCE) {
+        placeBuild(dimension, VILLAGE_BUILD, anchorX, y, anchorZ);
+      } else if (roll < VILLAGE_CHANCE + SPECIAL_CHANCE) {
+        placeBuild(dimension, pick(BUILDS, regionX, regionZ, 0x31), anchorX, y, anchorZ);
       }
-      return;
     }
   }
 
-  const dim = dimCache;
-
-  for (const player of world.getPlayers()) {
-    if (player.dimension.id !== COPPER_DIMENSION) continue;
-
-    const { x, z } = player.location;
-
-    for (const [id, chance, minDist] of VANILLA_STRUCTURES) {
-      if (Math.random() > chance) continue;
-      const angle = Math.random() * Math.PI * 2;
-      const dist = minDist + Math.random() * 64;
-      const sx = Math.floor(x + Math.cos(angle) * dist);
-      const sz = Math.floor(z + Math.sin(angle) * dist);
-      const sy = findSurface(dim, sx, sz);
-      if (sy > -64) tryPlaceStructure(dim, id, sx, sy + 1, sz);
-    }
-
-    for (const [id, chance, minDist] of SPECIAL_STRUCTURES) {
-      if (Math.random() > chance) continue;
-      const angle = Math.random() * Math.PI * 2;
-      const dist = minDist + Math.random() * 64;
-      const sx = Math.floor(x + Math.cos(angle) * dist);
-      const sz = Math.floor(z + Math.sin(angle) * dist);
-      const sy = findSurface(dim, sx, sz);
-      if (sy > -64) tryPlaceStructure(dim, id, sx, sy + 1, sz);
-    }
+  if (random(tileX, tileZ, SALT_CHEST) < CHEST_CHANCE) {
+    const x = tileX * 16 + Math.floor(random(tileX, tileZ, 0x41) * 16);
+    const z = tileZ * 16 + Math.floor(random(tileX, tileZ, 0x42) * 16);
+    const y = groundY(dimension, x, z);
+    if (y !== undefined) placeChest(dimension, x, y, z);
   }
-}, STRUCTURE_INTERVAL);
+}
 
-console.log("[copper-1] Structure generator loaded");
+/** Called by the terrain generator once a tile's ground exists. */
+export function populateTile(dimension, tileX, tileZ) {
+  const id = key(tileX, tileZ);
+  if (done.has(id)) return;
+  done.add(id);
+  try {
+    populate(dimension, tileX, tileZ);
+  } catch (error) {
+    console.warn(`[copper] points of interest failed for tile ${id}: ${error}`);
+  }
+}

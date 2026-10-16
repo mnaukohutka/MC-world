@@ -35,6 +35,8 @@
         "conditions": [
           {
             "block_filter": [
+              "pa:copper_grass",
+              "pa:copper_stone",
               "minecraft:copper_block",
               "minecraft:raw_copper_block",
               "minecraft:chiseled_copper",
@@ -89,6 +91,7 @@
           }
         ]
       },
+      "minecraft:random_ticking": {},
       "pa_custom_sapling_copper:trigger": {}
     }
   }

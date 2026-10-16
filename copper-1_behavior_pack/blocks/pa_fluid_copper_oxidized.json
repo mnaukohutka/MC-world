@@ -31,6 +31,7 @@
           "texture": "pa_fluid_copper_oxidized"
         }
       },
+      "minecraft:geometry": "geometry.fluid.5",
       "minecraft:collision_box": false,
       "minecraft:destructible_by_mining": false,
       "minecraft:loot": "loot_tables/blocks/pa_fluid_copper_oxidized.json",
@@ -60,10 +61,6 @@
             ]
           }
         }
-      },
-      {
-        "condition": "!q.block_state('block:source')",
-        "components": {}
       },
       {
         "condition": "q.block_state('block:depth') == 5",
