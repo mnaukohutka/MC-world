@@ -9,5 +9,6 @@
 import "./dimension/main_dimension";
 import "./block_trigger";
 import "./copper_fluid";
+import "./fluid_swim";
 import "./structures";
 import "./fluid_interactions";

@@ -27,7 +27,7 @@ const MIN_GROUND = 8;         // thinnest tile column
 const BOTTOM_MARGIN = 52;     // blocks of solid stone under every column
 const MIN_Y = -64;            // dimension floor
 const MAX_Y = 320;            // dimension ceiling
-const MIN_CAVE_Y = -56;       // deepest level caves are carved at
+const MIN_CAVE_Y = MIN_Y + 4; // deepest level caves are carved at
 
 const STONE = "pa:copper_stone";
 const GRASS = "pa:copper_grass";
@@ -36,10 +36,21 @@ const LOG = "pa:copper_wood";
 const FLUID_A = "pa:fluid_copper";
 const FLUID_B = "pa:fluid_copper_oxidized";
 
+/*
+ * Biomes. Nine, where there were four: the original four plus swamp, mushroom,
+ * badlands and snow, chosen by a temperature/humidity pair the way vanilla does
+ * rather than by the single wetness field. The fields are deliberately low
+ * frequency, so a biome spans a few hundred blocks instead of a few dozen.
+ */
 const PLAIN = "pa:copper_plain";
 const FOREST = "pa:copper_forest";
 const MOUNTAIN = "pa:copper_moutain";
 const OCEAN = "pa:copper_ocean";
+const SWAMP = "pa:copper_swamp";
+const MUSHROOM = "pa:copper_mushroom";
+const BADLANDS = "pa:copper_badlands";
+const SNOW = "pa:copper_snow";
+const BEACH = "pa:copper_beach";
 
 /*
  * Vanilla copper family, used as surface flavour. The four oxidation stages are
@@ -59,6 +70,11 @@ const BIOME_COPPER_STAGE = {
   [FOREST]: 1,
   [MOUNTAIN]: 2,
   [OCEAN]: 3,
+  [SWAMP]: 1,
+  [MUSHROOM]: 3,
+  [BADLANDS]: 2,
+  [SNOW]: 1,
+  [BEACH]: 0,
 };
 
 const ORE = "minecraft:copper_ore";
@@ -67,6 +83,16 @@ const RAW_COPPER = "minecraft:raw_copper_block";
 const MOSS = "minecraft:moss_block";
 const GRAVEL = "minecraft:gravel";
 const CLAY = "minecraft:clay";
+const SAND = "minecraft:sand";
+const MUD = "minecraft:mud";
+const MYCELIUM = "minecraft:mycelium";
+const SNOW_BLOCK = "minecraft:snow";
+const ICE = "minecraft:ice";
+const TERRACOTTA = "minecraft:hardened_clay";
+const ORANGE_TERRACOTTA = "minecraft:orange_terracotta";
+const SNOW_LAYER = "minecraft:snow_layer";
+const RED_MUSHROOM = "minecraft:red_mushroom";
+const BROWN_MUSHROOM = "minecraft:brown_mushroom";
 
 /* Lanterns hang below a chain, so the two ids come in matching pairs. */
 const LANTERNS = [
@@ -128,11 +154,33 @@ function oreAt(x, y, z) {
   return random2(x * 31 + y, z * 17 - y, 0x0e) < 0.5 ? permutation(ORE) : permutation(DEEPSLATE_ORE);
 }
 
+/** Per-biome surface material, so a biome is readable from the ground itself. */
 function soilAt(biome, x, z) {
-  if (biome === OCEAN) return permutation(CLAY);
-  if (biome === MOUNTAIN) return permutation(GRAVEL);
-  if (biome === FOREST) return random2(x, z, 0x50) < 0.6 ? permutation(MOSS) : grass();
-  return grass();
+  switch (biome) {
+    case OCEAN: return permutation(CLAY);
+    case BEACH: return permutation(SAND);
+    case MOUNTAIN: return permutation(GRAVEL);
+    case BADLANDS: return permutation(random2(x, z, 0x51) < 0.5 ? TERRACOTTA : ORANGE_TERRACOTTA);
+    case SNOW: return permutation(random2(x, z, 0x52) < 0.35 ? ICE : SNOW_BLOCK);
+    case SWAMP: return random2(x, z, 0x53) < 0.5 ? permutation(MUD) : grass();
+    case MUSHROOM: return permutation(MYCELIUM);
+    case FOREST: return random2(x, z, 0x50) < 0.6 ? permutation(MOSS) : grass();
+    default: return grass();
+  }
+}
+
+/** The single block laid at the very top of a column. */
+function topCap(biome, x, z) {
+  switch (biome) {
+    case MOUNTAIN: return random2(x, z, 0x70) < 0.3 ? stone() : grass();
+    case BEACH: return permutation(SAND);
+    case BADLANDS: return soilAt(biome, x, z);
+    case SNOW: return soilAt(biome, x, z);
+    case SWAMP: return soilAt(biome, x, z);
+    case MUSHROOM: return soilAt(biome, x, z);
+    case FOREST: return soilAt(biome, x, z);
+    default: return grass();
+  }
 }
 
 let seed = 0;
@@ -250,38 +298,79 @@ function isCave(x, y, z) {
 
 /** How mountainous the column is, -1..1. */
 function mountainness(x, z) {
-  return fbm(x / 140, z / 140, 2, 0x33);
+  return fbm(x / 240, z / 240, 2, 0x33);
 }
 
 /** How wet the column is, -1..1. Drives forest against plain. */
 function wetness(x, z) {
-  return fbm(x / 90 + 100, z / 90 + 100, 2, 0x77);
+  return fbm(x / 260 + 100, z / 260 + 100, 2, 0x77);
 }
 
-/** Which of the four copper biomes a column belongs to. */
+/** How hot the column is, -1..1. Drives badlands and snow apart. */
+function temperature(x, z) {
+  return fbm(x / 300 + 300, z / 300 + 300, 2, 0x21);
+}
+
+/** How weird the column is, -1..1. Spikes on the mushroom islands. */
+function weirdness(x, z) {
+  return fbm(x / 210 + 700, z / 210 + 700, 2, 0x9d);
+}
+
+/**
+ * Which copper biome a column belongs to.
+ *
+ * Ocean wins wherever the ground is at or below sea level, then a beach ring
+ * sits just above it. On land the temperature/humidity pair picks the biome the
+ * way vanilla's climate parameters do, which is what keeps the extra biomes in
+ * sensible neighbourhoods — snow never touching badlands, swamp hugging forest.
+ */
 function biomeAt(x, z, height) {
   if (mountainness(x, z) > MOUNTAIN_BASE) return MOUNTAIN;
   if (height <= SEA_LEVEL) return OCEAN;
-  if (wetness(x, z) > 0.12) return FOREST;
+  if (height <= SEA_LEVEL + 2) return BEACH;
+
+  const wet = wetness(x, z);
+  const temp = temperature(x, z);
+
+  // A rare high-weirdness pocket becomes mushroom country regardless of climate.
+  if (weirdness(x, z) > 0.62 && wet > 0.2) return MUSHROOM;
+  if (temp < -0.35 && wet > -0.1) return SNOW;
+  if (temp > 0.4 && wet < -0.1) return BADLANDS;
+  if (wet > 0.35 && temp > -0.2) return SWAMP;
+  if (wet > 0.12) return FOREST;
   return PLAIN;
 }
 
 /** Rolling copper hills with real mountains; flatter plateau near the origin. */
 function surfaceHeight(x, z) {
   const nearOrigin = Math.abs(x) <= 24 && Math.abs(z) <= 24;
-  const broad = fbm(x / 96, z / 96, 4, 0x65);
-  const fine = fbm(x / 28, z / 28, 3, 0x65);
+  const broad = fbm(x / 280, z / 280, 4, 0x65);
+  const fine = fbm(x / 60, z / 60, 3, 0x65);
   const ridge = mountainness(x, z);
-  let height = SURFACE_Y + broad * 10 + fine * 3;
-  if (ridge > MOUNTAIN_BASE) height += (ridge - MOUNTAIN_BASE) * 60;
+  let height = SURFACE_Y + broad * 12 + fine * 3;
+  if (ridge > MOUNTAIN_BASE) height += (ridge - MOUNTAIN_BASE) * 70;
+  // Badlands get a little extra relief, so their terraces read as plateaus.
+  if (temperature(x, z) > 0.4 && wetness(x, z) < -0.1) height += fine * 4;
   if (nearOrigin) return Math.max(SURFACE_Y, Math.round(height));
   return Math.round(height);
 }
 
+/** Trees per biome. Swamp is dense and mushroom is spore-laden; snow is sparse. */
+function treeDensity(biome) {
+  switch (biome) {
+    case FOREST: return 0.014;
+    case SWAMP: return 0.018;
+    case PLAIN: return 0.003;
+    case SNOW: return 0.004;
+    case MUSHROOM: return 0.006;
+    default: return 0;
+  }
+}
+
 function isTreeAt(x, z, biome) {
-  if (biome !== FOREST && biome !== PLAIN) return false;
+  const density = treeDensity(biome);
+  if (density === 0) return false;
   if (Math.abs(x) <= 6 && Math.abs(z) <= 6) return false;
-  const density = biome === FOREST ? 0.014 : 0.003;
   return random2(x, z, 0x5ab) < density;
 }
 
@@ -327,12 +416,6 @@ function buildColumn(dimension, x, z, top, bottom, biome) {
   dimension.getBlock({ x, y: top, z })?.setPermutation(biome === OCEAN ? soilAt(biome, x, z) : topCap(biome, x, z));
 }
 
-function topCap(biome, x, z) {
-  if (biome === MOUNTAIN) return random2(x, z, 0x70) < 0.3 ? stone() : grass();
-  if (biome === FOREST) return soilAt(biome, x, z);
-  return grass();
-}
-
 /** Fills one 16x16 tile of ground, then decorates it per biome. */
 function buildTile(dimension, tileX, tileZ) {
   const baseX = tileX * TILE;
@@ -371,6 +454,52 @@ function buildTile(dimension, tileX, tileZ) {
       placeTree(dimension, x, columnTops[index], z, columnBiome[index]);
     }
   }
+
+  // Small ground cover last, so nothing overgrows it: mushrooms on mycelium,
+  // cacti on the badlands floor, snow caps on the cold biome.
+  for (let dx = 1; dx < TILE - 1; dx++) {
+    for (let dz = 1; dz < TILE - 1; dz++) {
+      const index = dx * TILE + dz;
+      decorateColumn(dimension, baseX + dx, columnTops[index], baseZ + dz, columnBiome[index]);
+    }
+  }
+}
+
+/*
+ * Ground cover per biome. Everything is written only into air, so a decoration
+ * can never replace the terrain it stands on, and each is rare enough not to
+ * carpet the biome.
+ */
+function decorateColumn(dimension, x, top, z, biome) {
+  const ground = dimension.getBlock({ x, y: top, z });
+  if (!ground || ground.isAir || ground.isLiquid) return;
+
+  const roll = random2(x * 11, z * 17, 0x8a);
+  if (biome === MUSHROOM) {
+    if (roll < 0.05) setCover(dimension, x, top, z, roll < 0.025 ? RED_MUSHROOM : BROWN_MUSHROOM);
+    return;
+  }
+  if (biome === BADLANDS) {
+    if (roll < 0.02) placeCactus(dimension, x, top, z, 1 + (Math.floor(roll * 1000) % 3));
+    return;
+  }
+  if (biome === SNOW) {
+    setCover(dimension, x, top, z, SNOW_LAYER);
+    return;
+  }
+}
+
+function setCover(dimension, x, top, z, blockId) {
+  const above = dimension.getBlock({ x, y: top + 1, z });
+  if (above && above.isAir) above.setType(blockId);
+}
+
+function placeCactus(dimension, x, top, z, height) {
+  for (let i = 1; i <= height; i++) {
+    const block = dimension.getBlock({ x, y: top + i, z });
+    if (!block || !block.isAir) return;
+    block.setType("minecraft:cactus");
+  }
 }
 
 /** Ocean: both fluids, laid down as sources up to sea level. */
@@ -385,10 +514,12 @@ function fillSeas(dimension, x, z, floorY) {
 
 /** Occasional surface pools of the fluid on land, so both occur inland too. */
 function scatterPool(dimension, x, z, top, biome) {
-  if (biome === MOUNTAIN) return;
+  if (biome === MOUNTAIN || biome === BADLANDS || biome === SNOW) return;
+  // Swamp and mushroom country are wettest, so pools are commoner there.
+  const wetBand = (biome === SWAMP || biome === MUSHROOM) ? 0.5 : 0.55;
   const pool = fbm(x / 22 + 500, z / 22 + 500, 2, 0xa5);
-  if (pool < 0.55 || pool > 0.72) return;
-  dimension.getBlock({ x, y: top, z })?.setPermutation(pool > 0.635 ? fluidB() : fluidA());
+  if (pool < wetBand || pool > wetBand + 0.17) return;
+  dimension.getBlock({ x, y: top, z })?.setPermutation(pool > wetBand + 0.085 ? fluidB() : fluidA());
 }
 
 function placeTree(dimension, x, groundY, z, biome) {
@@ -532,9 +663,10 @@ export function startTerrainLoop(dimensionId) {
     for (const player of world.getPlayers()) {
       if (player.dimension.id !== dimensionId) continue;
       queueTerrainAround(player, dimensionId);
-      // The ocean floor can sit well below the average surface, so only lift a
-      // player who has fallen past the dimension floor itself.
-      if (player.location.y < MIN_Y + 8) {
+      // The ocean floor can sit well below the average surface, and exploration
+      // can take a player deep into the copper caves, so the lift only fires
+      // once they are past the dimension floor — never mid-exploration.
+      if (player.location.y < MIN_Y + 1) {
         player.teleport({ x: player.location.x, y: SURFACE_Y + 2, z: player.location.z }, { dimension: player.dimension });
         player.sendMessage("§eThe dimension was still forming — you were lifted back up.");
       }
