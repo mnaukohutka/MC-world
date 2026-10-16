@@ -1,1 +1,1 @@
-give @s minecraft:copper_portal
+give @s pa:copper_portal

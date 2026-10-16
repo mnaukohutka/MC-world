@@ -1,6 +1,32 @@
 import { system, ItemStack, Direction, GameMode, BlockPermutation, EquipmentSlot } from '@minecraft/server';
 import { directionToVector3 } from './math';
 
+/**
+ * Subscribes to an event signal without assuming it exists.
+ *
+ * Signals differ between game versions and between stable and beta script
+ * APIs, so a signal this world was not given would otherwise throw
+ * "cannot read property 'subscribe' of undefined" and take the whole script
+ * module down with it. Missing signals are reported once and skipped.
+ *
+ * @param {object} signal Event signal, or undefined when the game does not expose it.
+ * @param {(event: any) => void} callback Handler invoked for each raised event.
+ * @param {string} name Signal name, used for the diagnostic message.
+ */
+export function safeSubscribe(signal, callback, name) {
+  if (!signal || typeof signal.subscribe !== 'function') {
+    console.warn(`[copper] event signal "${name}" is not available on this game version; skipping.`);
+    return undefined;
+  }
+  return signal.subscribe((event) => {
+    try {
+      callback(event);
+    } catch (error) {
+      console.warn(`[copper] handler for "${name}" failed: ${error}`);
+    }
+  });
+}
+
 export function randomFunction(funcList) {
     const index = Math.floor(Math.random() * funcList.length);
     return funcList[index];

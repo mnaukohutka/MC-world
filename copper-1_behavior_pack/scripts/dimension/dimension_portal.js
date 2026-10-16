@@ -1,5 +1,6 @@
 import { world, system, GameMode, BlockPermutation, BlockVolume, Direction, MolangVariableMap } from "@minecraft/server";
 import { dimensionConfigs, registerArrival, travelTo } from "./dimension";
+import { safeSubscribe } from '../utils/helper';
 
 /*
  * Portal blocks.
@@ -979,7 +980,7 @@ function lightPortal(player, config, rect) {
  * `before` handlers may read the world but not write it, so the fill is deferred
  * to `system.run`.
  */
-world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
+safeSubscribe(world.beforeEvents.playerInteractWithBlock, (event) => {
   if (!event.isFirstEvent) return;
   const item = event.itemStack;
   const block = event.block;
@@ -994,7 +995,7 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
 
   event.cancel = true;
   system.run(() => lightPortal(player, config, rect));
-});
+}, 'world.beforeEvents.playerInteractWithBlock');
 
 // ── Collapse ───────────────────────────────────────────────────────────────
 
@@ -1047,7 +1048,7 @@ function collapsePortal(dimension, from, portalBlockId) {
   }
 }
 
-world.afterEvents.playerBreakBlock.subscribe((event) => {
+safeSubscribe(world.afterEvents.playerBreakBlock, (event) => {
   const dimension = event.dimension;
   const ids = portalIds();
   if (ids.size === 0) return;
@@ -1060,7 +1061,7 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
     const typeId = block.typeId;
     system.run(() => collapsePortal(dimension, at, typeId));
   }
-});
+}, 'world.afterEvents.playerBreakBlock');
 
 // ── Return portal ──────────────────────────────────────────────────────────
 

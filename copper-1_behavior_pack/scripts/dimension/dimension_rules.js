@@ -1,5 +1,6 @@
 import { world, system, GameMode, WeatherType, InputPermissionCategory } from "@minecraft/server";
 import { dimensionConfigs, startModule } from "./dimension";
+import { safeSubscribe } from '../utils/helper';
 
 /*
  * Rule engine: trigger -> actions.
@@ -104,15 +105,15 @@ function capitalize(value) {
 
 // ── Triggers ───────────────────────────────────────────────────────────────
 
-world.afterEvents.worldLoad.subscribe(() => {
+safeSubscribe(world.afterEvents.worldLoad, () => {
   for (const { config, rule } of rulesOf("onWorldLoad")) {
     fire(rule, undefined, config);
   }
   startIntervals();
   startFallOutWatch();
-});
+}, 'world.afterEvents.worldLoad');
 
-world.afterEvents.playerDimensionChange.subscribe((event) => {
+safeSubscribe(world.afterEvents.playerDimensionChange, (event) => {
   const to = String(event.toDimension.id);
   const from = String(event.fromDimension.id);
 
@@ -122,16 +123,16 @@ world.afterEvents.playerDimensionChange.subscribe((event) => {
   for (const { config, rule } of rulesOf("onEnter")) {
     if (config.typeId === to) fire(rule, event.player, config);
   }
-});
+}, 'world.afterEvents.playerDimensionChange');
 
-world.afterEvents.playerSpawn.subscribe((event) => {
+safeSubscribe(world.afterEvents.playerSpawn, (event) => {
   // initialSpawn is a join, not a respawn.
   if (event.initialSpawn) return;
   const id = String(event.player.dimension.id);
   for (const { config, rule } of rulesOf("onRespawn")) {
     if (config.typeId === id) fire(rule, event.player, config);
   }
-});
+}, 'world.afterEvents.playerSpawn');
 
 /**
  * `onInterval` rules, one `system.runInterval` per distinct period so a rule

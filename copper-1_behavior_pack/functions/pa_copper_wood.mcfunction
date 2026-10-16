@@ -1,1 +1,1 @@
-give @s minecraft:copper_wood
+give @s pa:copper_wood

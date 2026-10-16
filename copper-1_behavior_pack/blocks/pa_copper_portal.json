@@ -1,5 +1,5 @@
 {
-  "format_version": "1.20.50",
+  "format_version": "1.21.90",
   "minecraft:block": {
     "description": {
       "identifier": "pa:copper_portal",
@@ -47,6 +47,7 @@
         }
       },
       "minecraft:geometry": "minecraft:geometry.full_block",
+      "pa_copper_portal:trigger": {}
     }
   }
 }

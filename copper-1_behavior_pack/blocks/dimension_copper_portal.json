@@ -1,5 +1,5 @@
 {
-  "format_version": "1.20.50",
+  "format_version": "1.21.90",
   "minecraft:block": {
     "description": {
       "identifier": "pa:dimension_copper_portal",
