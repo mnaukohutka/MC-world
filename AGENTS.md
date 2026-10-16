@@ -55,3 +55,17 @@ Check these before inventing a fix.
 Official schemas (block/item JSON) are the fastest way to settle a syntax
 question: clone Mojang/bedrock-samples and read
 metadata/json_schemas/server/block/<ver>/.
+
+- minecraft:random_ticking was removed as well. A block that still carries it
+  fails with "Block definition parsing failed" (and drags its custom component
+  down with it). Its onRandomTick hook goes too: gate a minecraft:tick block on
+  Math.random() inside onTick instead.
+- A custom block must not declare minecraft:geometry "geometry.fluid.N" from a
+  resource-pack model and also carry a matching blocks.json entry: the pair logs
+  "trying to override the Geometry component with blocks.json". Keep the model
+  in the behaviour pack's geometry component and out of blocks.json.
+- Script-registered dimensions start void and cannot use biome JSON, so a pack
+  that ships biomes/*.biome.json gets "no parser available for version 1.21.0",
+  "Loaded client biome but no biome with that name exists" and
+  feature_rules/features pointed at those biomes are dead. Reproduce the biomes
+  in script instead; delete the biome files and the rules that reference them.

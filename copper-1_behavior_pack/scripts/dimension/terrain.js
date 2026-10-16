@@ -27,6 +27,7 @@ const MIN_GROUND = 8;         // thinnest tile column
 const BOTTOM_MARGIN = 52;     // blocks of solid stone under every column
 const MIN_Y = -64;            // dimension floor
 const MAX_Y = 320;            // dimension ceiling
+const MIN_CAVE_Y = -56;       // deepest level caves are carved at
 
 const STONE = "pa:copper_stone";
 const GRASS = "pa:copper_grass";
@@ -39,6 +40,41 @@ const PLAIN = "pa:copper_plain";
 const FOREST = "pa:copper_forest";
 const MOUNTAIN = "pa:copper_moutain";
 const OCEAN = "pa:copper_ocean";
+
+/*
+ * Vanilla copper family, used as surface flavour. The four oxidation stages are
+ * ordered fresh -> oxidized, so a biome can pick a stage and get a consistent
+ * look instead of sprinkling the whole set at random.
+ */
+const COPPER_STAGES = [
+  ["minecraft:copper_block", "minecraft:cut_copper", "minecraft:chiseled_copper", "minecraft:copper_grate", "minecraft:copper_bulb"],
+  ["minecraft:exposed_copper", "minecraft:exposed_cut_copper", "minecraft:exposed_chiseled_copper", "minecraft:exposed_copper_grate", "minecraft:exposed_copper_bulb"],
+  ["minecraft:weathered_copper", "minecraft:weathered_cut_copper", "minecraft:weathered_chiseled_copper", "minecraft:weathered_copper_grate", "minecraft:weathered_copper_bulb"],
+  ["minecraft:oxidized_copper", "minecraft:oxidized_cut_copper", "minecraft:oxidized_chiseled_copper", "minecraft:oxidized_copper_grate", "minecraft:oxidized_copper_bulb"],
+];
+
+/** Each biome owns one oxidation stage, which is what makes them read apart. */
+const BIOME_COPPER_STAGE = {
+  [PLAIN]: 0,
+  [FOREST]: 1,
+  [MOUNTAIN]: 2,
+  [OCEAN]: 3,
+};
+
+const ORE = "minecraft:copper_ore";
+const DEEPSLATE_ORE = "minecraft:deepslate_copper_ore";
+const RAW_COPPER = "minecraft:raw_copper_block";
+const MOSS = "minecraft:moss_block";
+const GRAVEL = "minecraft:gravel";
+const CLAY = "minecraft:clay";
+
+/* Lanterns hang below a chain, so the two ids come in matching pairs. */
+const LANTERNS = [
+  ["minecraft:copper_chain", "minecraft:copper_lantern"],
+  ["minecraft:exposed_copper_chain", "minecraft:exposed_copper_lantern"],
+  ["minecraft:weathered_copper_chain", "minecraft:weathered_copper_lantern"],
+  ["minecraft:oxidized_copper_chain", "minecraft:oxidized_copper_lantern"],
+];
 
 const permutationCache = new Map();
 
@@ -73,6 +109,30 @@ function fluidA() {
 
 function fluidB() {
   return permutation(FLUID_B).withState("block:source", true).withState("block:depth", 5);
+}
+
+/** One block of the copper family, chosen by the column's biome stage. */
+function copperAt(biome, x, z) {
+  const stage = COPPER_STAGES[BIOME_COPPER_STAGE[biome] ?? 0];
+  return permutation(stage[Math.floor(random2(x, z, 0xc0) * stage.length) % stage.length]);
+}
+
+/** The chain+lantern pair that matches the biome's oxidation stage. */
+function lanternAt(biome, x, z) {
+  const [chain, lantern] = LANTERNS[BIOME_COPPER_STAGE[biome] ?? 0];
+  return { chain: permutation(chain), lantern: permutation(lantern) };
+}
+
+/** Freshly exposed rock pockets inside a column, so caves read as copper veins. */
+function oreAt(x, y, z) {
+  return random2(x * 31 + y, z * 17 - y, 0x0e) < 0.5 ? permutation(ORE) : permutation(DEEPSLATE_ORE);
+}
+
+function soilAt(biome, x, z) {
+  if (biome === OCEAN) return permutation(CLAY);
+  if (biome === MOUNTAIN) return permutation(GRAVEL);
+  if (biome === FOREST) return random2(x, z, 0x50) < 0.6 ? permutation(MOSS) : grass();
+  return grass();
 }
 
 let seed = 0;
@@ -135,6 +195,59 @@ function fbm(x, z, octaves, salt) {
   return total / norm;
 }
 
+/** Same hash family as random2, but over three coordinates. */
+function random3(x, y, z, salt) {
+  let h = Math.imul(x, 0x165667b1);
+  h = (h + Math.imul(y, 0x9e3779b1)) | 0;
+  h = (h + Math.imul(z, 0x27d4eb2f)) | 0;
+  h = (h + Math.imul(seed ^ salt, 0x55fdc781)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 0x4bf19f61);
+  return ((h ^ (h >>> 16)) >>> 0) / 0xffffffff;
+}
+
+function valueNoise3(x, y, z, salt) {
+  const xi = Math.floor(x);
+  const yi = Math.floor(y);
+  const zi = Math.floor(z);
+  const tx = smooth(x - xi);
+  const ty = smooth(y - yi);
+  const tz = smooth(z - zi);
+  const c000 = random3(xi, yi, zi, salt);
+  const c100 = random3(xi + 1, yi, zi, salt);
+  const c010 = random3(xi, yi + 1, zi, salt);
+  const c110 = random3(xi + 1, yi + 1, zi, salt);
+  const c001 = random3(xi, yi, zi + 1, salt);
+  const c101 = random3(xi + 1, yi, zi + 1, salt);
+  const c011 = random3(xi, yi + 1, zi + 1, salt);
+  const c111 = random3(xi + 1, yi + 1, zi + 1, salt);
+  const x00 = c000 + (c100 - c000) * tx;
+  const x10 = c010 + (c110 - c010) * tx;
+  const x01 = c001 + (c101 - c001) * tx;
+  const x11 = c011 + (c111 - c011) * tx;
+  const y0 = x00 + (x10 - x00) * ty;
+  const y1 = x01 + (x11 - x01) * ty;
+  return (y0 + (y1 - y0) * tz) * 2 - 1;
+}
+
+/*
+ * Caves are the intersection of two thin isosurfaces of independent 3D noise,
+ * which carves winding tunnels rather than a single connected void. Both fields
+ * are read a fair distance underground only; a per-column coarse check keeps
+ * columns the tunnels never reach out of the expensive inner loop.
+ */
+const CAVE_WIDTH = 0.15;
+
+function caveColumn(x, z) {
+  return fbm(x / 72, z / 72, 2, 0xcd) > -0.2;
+}
+
+function isCave(x, y, z) {
+  const a = valueNoise3(x / 46, y / 26, z / 46, 0xca);
+  if (Math.abs(a) > CAVE_WIDTH) return false;
+  const b = valueNoise3(x / 34 + 400, y / 20 + 400, z / 34 + 400, 0xcb);
+  return Math.abs(b) <= CAVE_WIDTH;
+}
+
 /** How mountainous the column is, -1..1. */
 function mountainness(x, z) {
   return fbm(x / 140, z / 140, 2, 0x33);
@@ -172,6 +285,54 @@ function isTreeAt(x, z, biome) {
   return random2(x, z, 0x5ab) < density;
 }
 
+/** Carves the cave network out of one already-solid column. */
+function carveColumn(dimension, x, z, bottom, top) {
+  if (!caveColumn(x, z)) return;
+  // Caves are kept to the reachable band, which also keeps the scan short.
+  const from = Math.max(bottom + 1, MIN_CAVE_Y);
+  for (let y = from; y < top - 1; y++) {
+    if (!isCave(x, y, z)) continue;
+    // Every so often a cave wall keeps its copper, so the tunnels are not bare.
+    const block = dimension.getBlock({ x, y, z });
+    if (!block) continue;
+    block.setPermutation(y < 0 && random3(x, y, z, 0x0f) < 0.35 ? oreAt(x, y, z) : permutation("minecraft:air"));
+  }
+}
+
+/** Turns a solid column into layered stone, ore pockets and a surface cap. */
+function buildColumn(dimension, x, z, top, bottom, biome) {
+  dimension.fillBlocks(new BlockVolume({ x, y: bottom, z }, { x, y: top - 1, z }), stone(), {
+    ignoreChunkBoundErrors: true,
+  });
+
+  carveColumn(dimension, x, z, bottom, top);
+
+  /*
+   * A shallow gravel/clay band under the surface gives each biome a distinct
+   * cross-section, and scattered copper-family blocks at and just under the
+   * surface are what make a walk through the world look like copper country.
+   */
+  for (let y = top - 4; y < top; y++) {
+    const block = dimension.getBlock({ x, y, z });
+    if (!block || block.isAir) continue;
+    if (random2(x * 7 + y, z * 13 - y, 0x44) < 0.35) block.setPermutation(soilAt(biome, x, z));
+  }
+
+  for (let y = top - 3; y <= top; y++) {
+    const block = dimension.getBlock({ x, y, z });
+    if (!block || block.isAir) continue;
+    if (random2(x * 3 + y, z * 5 - y, 0x33) < 0.16) block.setPermutation(copperAt(biome, x, z));
+  }
+
+  dimension.getBlock({ x, y: top, z })?.setPermutation(biome === OCEAN ? soilAt(biome, x, z) : topCap(biome, x, z));
+}
+
+function topCap(biome, x, z) {
+  if (biome === MOUNTAIN) return random2(x, z, 0x70) < 0.3 ? stone() : grass();
+  if (biome === FOREST) return soilAt(biome, x, z);
+  return grass();
+}
+
 /** Fills one 16x16 tile of ground, then decorates it per biome. */
 function buildTile(dimension, tileX, tileZ) {
   const baseX = tileX * TILE;
@@ -190,12 +351,7 @@ function buildTile(dimension, tileX, tileZ) {
       columnTops[index] = top;
       columnBiome[index] = biome;
 
-      dimension.fillBlocks(new BlockVolume({ x, y: bottom, z }, { x, y: top - 1, z }), stone(), {
-        ignoreChunkBoundErrors: true,
-      });
-
-      const surface = biome === MOUNTAIN ? stone() : grass();
-      dimension.getBlock({ x, y: top, z })?.setPermutation(surface);
+      buildColumn(dimension, x, z, top, bottom, biome);
 
       if (top <= SEA_LEVEL) {
         fillSeas(dimension, x, z, top);
@@ -212,7 +368,7 @@ function buildTile(dimension, tileX, tileZ) {
       const x = baseX + dx;
       const z = baseZ + dz;
       if (!isTreeAt(x, z, columnBiome[index])) continue;
-      placeTree(dimension, x, columnTops[index], z);
+      placeTree(dimension, x, columnTops[index], z, columnBiome[index]);
     }
   }
 }
@@ -235,7 +391,7 @@ function scatterPool(dimension, x, z, top, biome) {
   dimension.getBlock({ x, y: top, z })?.setPermutation(pool > 0.635 ? fluidB() : fluidA());
 }
 
-function placeTree(dimension, x, groundY, z) {
+function placeTree(dimension, x, groundY, z, biome) {
   const trunk = 5 + Math.floor(random2(x, z, 0x1f) * 3);
   for (let i = 1; i <= trunk; i++) {
     dimension.getBlock({ x, y: groundY + i, z })?.setPermutation(log());
@@ -253,6 +409,33 @@ function placeTree(dimension, x, groundY, z) {
     }
   }
   dimension.getBlock({ x, y: top + 1, z })?.setPermutation(leaves());
+
+  hangLanterns(dimension, x, top, z, biome);
+}
+
+/*
+ * A chain of one or two links under a canopy edge, ended by a lantern. It only
+ * overwrites air, so it never eats the leaves it hangs from, and it is rare
+ * enough that a forest reads as decorated rather than lit up.
+ */
+function hangLanterns(dimension, x, top, z, biome) {
+  if (random2(x, z, 0x1a) > 0.18) return;
+  const { chain, lantern } = lanternAt(biome, x, z);
+  const offsets = [
+    [2, 0], [-2, 0], [0, 2], [0, -2],
+  ];
+  const [ox, oz] = offsets[Math.floor(random2(x, z, 0x2b) * offsets.length) % offsets.length];
+
+  // Start under the outer canopy layer, which sits one block lower than `top`.
+  const y = top - 1;
+  const links = random2(x, z, 0x3c) < 0.5 ? 1 : 2;
+  for (let i = 0; i < links; i++) {
+    const block = dimension.getBlock({ x: x + ox, y: y - i, z: z + oz });
+    if (!block || !block.isAir) return;
+    block.setPermutation(chain);
+  }
+  const socket = dimension.getBlock({ x: x + ox, y: y - links, z: z + oz });
+  if (socket && socket.isAir) socket.setPermutation(lantern);
 }
 
 async function runQueue(dimension) {
