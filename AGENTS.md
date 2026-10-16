@@ -135,3 +135,28 @@ metadata/json_schemas/server/block/<ver>/.
 - `groundY` uses `dimension.getTopmostBlock`, which reports the *build* ceiling
   for a still-unloaded column. Structures placed from that height land at y=320
   and vanish. Keep the ceiling rejection in `groundY`.
+
+## Round-5: workers and chests
+
+- `spawn_rules/*.json` matches on a biome tag and a script-registered dimension
+  has no biome, so nothing the pack ships spawns on its own. Mobs must be
+  spawned from script (`scripts/dimension/mobs.js`): roll around each player,
+  then place the body where the type can actually live (flyer in air, fish
+  inside water, burrower after carving its own space), or it suffocates.
+- A chest's inventory component is only attached while its chunk is inside a
+  ticking area. `system.run(...)` defers past that window — the area is removed
+  the moment the tile finishes — so a deferred fill leaves the chest empty.
+  Fill immediately and fall back to `system.run` only if the container is
+  missing.
+- A custom mob's `family` list is what `dimension.getEntities({ families })`
+  filters on. Give every worker a shared `pa_worker` family so one ticker can
+  drive them all, plus a movement family (`pa_flyer`/`pa_swimmer`/`pa_walker`/
+  `pa_burrower`).
+- `@minecraft/server` V2 exposes only `blockComponentRegistry` and
+  `itemComponentRegistry`; there is no entity component registry, so custom mob
+  AI is a central `system.runInterval` ticker, not a registered component.
+- The copper bulb is `minecraft:copper_bulb` and its state is `lit` (unlike the
+  pack's own `pa:copper_lamp:pa:lit`). Particle ids are the full identifiers:
+  `minecraft:basic_bubble_particle`, `minecraft:basic_crit_particle`,
+  `minecraft:crop_growth_emitter`, not the file names.
+

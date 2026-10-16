@@ -1,0 +1,20 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "pa:copper_bee",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/entity/pa_mobs/copper_bee" },
+      "geometry": { "default": "geometry.bee" },
+      "scripts": {
+        "animate": [ "flying", "bobbing" ]
+      },
+      "animations": {
+        "flying": "animation.bee.flying",
+        "bobbing": "animation.bee.fly.bobbing"
+      },
+      "render_controllers": [ "controller.render.default" ],
+      "spawn_egg": { "base_color": "#b4682e", "overlay_color": "#5fd6c4" }
+    }
+  }
+}

@@ -20,10 +20,10 @@ import { world, system, ItemStack } from "@minecraft/server";
 
 const REGION = 8;              // tiles per region; a region gets one small build
 const LANDMARK_REGION = 24;    // tiles per landmark cell; a much bigger area
-const CHEST_REGION = 8;        // tiles per chest cell; one chest at most
+const CHEST_REGION = 4;        // tiles per chest cell; one chest at most
 
 const BUILD_CHANCE = 0.22;     // pack builds (temple/fontana/lucerna)
-const CHEST_CHANCE = 0.30;     // a chest in a chest cell, at most one
+const CHEST_CHANCE = 0.55;     // a chest in a chest cell, at most one
 const LANDMARK_CHANCE = 0.85;  // a landmark in a landmark cell
 
 /* The dimension floor/ceiling, used to reject builds that would leave them. */
@@ -508,21 +508,49 @@ function placeChestAt(dimension, x, y, z, saltX, saltZ) {
     // Chunk left the loading window; the terrain pass rebuilds the tile later.
     return;
   }
+
   /*
-   * The container is not attached until the block settles, so the fill is put
-   * off a tick. It runs once per chest; a chest that never loads simply stays
-   * empty rather than erroring.
+   * The fill must happen while the chunk is still inside the terrain queue's
+   * ticking area. Deferring it with `system.run` moves it past that window —
+   * the area is removed the moment the tile finishes — so the container is
+   * never attached and the chest stays empty. Try the immediate fill first and
+   * fall back to a deferred one only when the container is not there yet.
    */
-  system.run(() => {
+  const attached = () => {
     try {
-      fillChest(dimension, x, y, z, Math.floor(random(saltX, saltZ, 0x41) * 1000));
+      return Boolean(dimension.getBlock({ x, y, z })?.getComponent("minecraft:inventory")?.container);
     } catch {
-      // The chunk unloaded again before the fill; leave the chest as it is.
+      return false;
     }
-  });
+  };
+  if (!attached()) {
+    system.run(() => {
+      try {
+        fillChest(dimension, x, y, z, Math.floor(random(saltX, saltZ, 0x41) * 1000));
+      } catch {
+        // The chunk unloaded again before the fill; leave the chest as it is.
+      }
+    });
+    return;
+  }
+  fillChest(dimension, x, y, z, Math.floor(random(saltX, saltZ, 0x41) * 1000));
 }
 
 // ── Population ──────────────────────────────────────────────────────────────
+
+/**
+ * Drops one filled chest beside the arrival pad so a player meets the chest
+ * system immediately, rather than wandering for hundreds of chunks before
+ * stumbling on the scattered ones. Placed on the pad's surface, one block to
+ * the side of the spawn point.
+ */
+export function placeStarterChest(dimension, spawn) {
+  const x = Math.floor(spawn.x) + 2;
+  const z = Math.floor(spawn.z);
+  const y = spawn.y;
+  placeChestAt(dimension, x, y, z, spawn.x, spawn.z);
+  return { x, y, z };
+}
 
 /**
  * One chest in a chest cell, on its anchor column. Working from the cell rather

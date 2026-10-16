@@ -1,0 +1,19 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "pa:copper_fish",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/entity/pa_mobs/copper_fish" },
+      "geometry": { "default": "geometry.cod" },
+      "scripts": {
+        "animate": [ "general" ]
+      },
+      "animations": {
+        "general": "controller.animation.fish.general"
+      },
+      "render_controllers": [ "controller.render.default" ],
+      "spawn_egg": { "base_color": "#b4682e", "overlay_color": "#7fb3d5" }
+    }
+  }
+}

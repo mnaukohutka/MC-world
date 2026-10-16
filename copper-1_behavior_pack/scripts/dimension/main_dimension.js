@@ -2,6 +2,7 @@ import { registerDimension, installTravelMenu } from "./dimension";
 import "./dimension_rules";
 import "./dimension_portal";
 import "./mobs";
+import "./workers";
 
 /*
  * The Copper Dimension lives outside the Overworld. Terrain is generated in
