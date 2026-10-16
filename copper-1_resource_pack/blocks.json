@@ -19,5 +19,14 @@
   "pa:fluid_copper_oxidized": {
     "textures": "pa_fluid_copper_oxidized",
     "sound": "slime"
+  },
+  "pa:copper_stone": {
+    "sound": "stone"
+  },
+  "pa:copper_grass": {
+    "sound": "grass"
+  },
+  "pa:copper_leaves": {
+    "sound": "grass"
   }
 }
