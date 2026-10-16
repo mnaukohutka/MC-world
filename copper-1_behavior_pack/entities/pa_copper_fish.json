@@ -1,0 +1,76 @@
+{
+  "format_version": "1.21.100",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "pa:copper_fish",
+      "is_spawnable": true,
+      "is_summonable": true
+    },
+    "component_groups": {
+      "pa:despawn": {
+        "minecraft:instant_despawn": {}
+      }
+    },
+    "components": {
+      "minecraft:type_family": {
+        "family": [ "pa_worker", "pa_swimmer", "fish", "aquatic" ]
+      },
+      "minecraft:collision_box": { "width": 0.6, "height": 0.3 },
+      "minecraft:health": { "value": 6, "max": 6 },
+      "minecraft:movement": { "value": 0.18 },
+      "minecraft:underwater_movement": { "value": 0.18 },
+      "minecraft:movement.sway": { "sway_amplitude": 0 },
+      "minecraft:navigation.generic": {
+        "can_breach": false,
+        "can_walk": false,
+        "can_path_over_water": false,
+        "can_sink": false,
+        "can_swim": true,
+        "is_amphibious": false,
+        "using_door_annotation": true
+      },
+      "minecraft:breathable": {
+        "breathes_air": false,
+        "breathes_water": true,
+        "suffocate_time": 0,
+        "total_supply": 15
+      },
+      "minecraft:physics": { "has_gravity": false },
+      "minecraft:pushable": { "is_pushable": true, "is_pushable_by_piston": true },
+      "minecraft:nameable": { "always_show": false, "allow_name_tag_renaming": true },
+      "minecraft:conditional_bandwidth_optimization": {},
+      "minecraft:follow_range": { "value": 32, "max": 32 },
+      "minecraft:behavior.random_swim": {
+        "priority": 4,
+        "interval": 0,
+        "xz_dist": 16,
+        "y_dist": 4,
+        "speed_multiplier": 1
+      },
+      "minecraft:behavior.swim_wander": {
+        "priority": 5,
+        "interval": 0.1,
+        "look_ahead": 2
+      },
+      "minecraft:behavior.swim_idle": { "priority": 6 },
+      "minecraft:behavior.look_at_player": {
+        "priority": 7,
+        "look_distance": 8,
+        "probability": 0.02
+      },
+      "minecraft:despawn": { "despawn_from_distance": { "min_distance": 32, "max_distance": 44 } },
+      "minecraft:hurt_on_condition": {
+        "damage_conditions": [
+          {
+            "cause": "lava",
+            "damage_per_tick": 4,
+            "filters": { "test": "in_lava", "subject": "self", "operator": "==", "value": true }
+          }
+        ]
+      }
+    },
+    "events": {
+      "minecraft:entity_spawned": {}
+    }
+  }
+}

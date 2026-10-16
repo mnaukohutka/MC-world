@@ -13,12 +13,12 @@
     ],
     "key": {
       "A": {
-        "item": "minecraft:oxidized_copper"
+        "item": "minecraft:oxidized_copper_grate"
       }
     },
     "unlock": [
       {
-        "item": "minecraft:oxidized_copper"
+        "item": "minecraft:oxidized_copper_grate"
       }
     ],
     "result": {

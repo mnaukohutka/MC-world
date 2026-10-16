@@ -1,0 +1,22 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "pa:copper_mole",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/entity/pa_mobs/copper_mole" },
+      "geometry": { "default": "geometry.silverfish" },
+      "scripts": {
+        "pre_animation": [
+          "variable.body_rot = query.target_x_rotation;"
+        ],
+        "animate": [ "move" ]
+      },
+      "animations": {
+        "move": "animation.silverfish.move"
+      },
+      "render_controllers": [ "controller.render.default" ],
+      "spawn_egg": { "base_color": "#7a4a2c", "overlay_color": "#2e1c14" }
+    }
+  }
+}

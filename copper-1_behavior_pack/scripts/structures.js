@@ -20,10 +20,10 @@ import { world, system, ItemStack } from "@minecraft/server";
 
 const REGION = 8;              // tiles per region; a region gets one small build
 const LANDMARK_REGION = 24;    // tiles per landmark cell; a much bigger area
-const CHEST_REGION = 8;        // tiles per chest cell; one chest at most
+const CHEST_REGION = 4;        // tiles per chest cell; one chest at most
 
 const BUILD_CHANCE = 0.22;     // pack builds (temple/fontana/lucerna)
-const CHEST_CHANCE = 0.30;     // a chest in a chest cell, at most one
+const CHEST_CHANCE = 0.55;     // a chest in a chest cell, at most one
 const LANDMARK_CHANCE = 0.85;  // a landmark in a landmark cell
 
 /* The dimension floor/ceiling, used to reject builds that would leave them. */
@@ -57,7 +57,7 @@ const SALT_LANDMARK = 0x77f1;
 const SALT_PORTAL = 0x2be3;
 const SALT_VAULT = 0x51c9;
 
-const done = new Set();
+const contentDone = new Set();
 const landmarkDone = new Set();
 let seed = 0;
 
@@ -73,7 +73,7 @@ export function seedPoints(worldSeed) {
     h = Math.imul(h, 0x01000193);
   }
   seed = h | 0;
-  done.clear();
+  contentDone.clear();
   landmarkDone.clear();
 }
 
@@ -508,54 +508,87 @@ function placeChestAt(dimension, x, y, z, saltX, saltZ) {
     // Chunk left the loading window; the terrain pass rebuilds the tile later.
     return;
   }
+
   /*
-   * The container is not attached until the block settles, so the fill is put
-   * off a tick. It runs once per chest; a chest that never loads simply stays
-   * empty rather than erroring.
+   * The fill must happen while the chunk is still inside the terrain queue's
+   * ticking area. Deferring it with `system.run` moves it past that window —
+   * the area is removed the moment the tile finishes — so the container is
+   * never attached and the chest stays empty. Try the immediate fill first and
+   * fall back to a deferred one only when the container is not there yet.
    */
-  system.run(() => {
+  const attached = () => {
     try {
-      fillChest(dimension, x, y, z, Math.floor(random(saltX, saltZ, 0x41) * 1000));
+      return Boolean(dimension.getBlock({ x, y, z })?.getComponent("minecraft:inventory")?.container);
     } catch {
-      // The chunk unloaded again before the fill; leave the chest as it is.
+      return false;
     }
-  });
+  };
+  if (!attached()) {
+    system.run(() => {
+      try {
+        fillChest(dimension, x, y, z, Math.floor(random(saltX, saltZ, 0x41) * 1000));
+      } catch {
+        // The chunk unloaded again before the fill; leave the chest as it is.
+      }
+    });
+    return;
+  }
+  fillChest(dimension, x, y, z, Math.floor(random(saltX, saltZ, 0x41) * 1000));
 }
 
 // ── Population ──────────────────────────────────────────────────────────────
+
+/**
+ * Drops one filled chest beside the arrival pad so a player meets the chest
+ * system immediately, rather than wandering for hundreds of chunks before
+ * stumbling on the scattered ones. Placed on the pad's surface, one block to
+ * the side of the spawn point.
+ */
+export function placeStarterChest(dimension, spawn) {
+  const x = Math.floor(spawn.x) + 2;
+  const z = Math.floor(spawn.z);
+  const y = spawn.y;
+  placeChestAt(dimension, x, y, z, spawn.x, spawn.z);
+  return { x, y, z };
+}
 
 /**
  * One chest in a chest cell, on its anchor column. Working from the cell rather
  * than the tile is what stops the old scatter from dropping several chests within
  * sight of each other.
  */
-function populateChest(dimension, tileX, tileZ) {
+function gatherChest(tileX, tileZ) {
   const cellX = Math.floor(tileX / CHEST_REGION);
   const cellZ = Math.floor(tileZ / CHEST_REGION);
-  if (tileX !== cellX * CHEST_REGION || tileZ !== cellZ * CHEST_REGION) return;
-  if (random(cellX, cellZ, SALT_CHEST) >= CHEST_CHANCE) return;
+  if (tileX !== cellX * CHEST_REGION || tileZ !== cellZ * CHEST_REGION) return null;
+  if (random(cellX, cellZ, SALT_CHEST) >= CHEST_CHANCE) return null;
 
   // Offset from the cell's build anchor, so a chest never lands on top of the
   // pack build that may share the cell.
   const x = cellX * CHEST_REGION * 16 + 24;
   const z = cellZ * CHEST_REGION * 16 + 24;
-  const y = groundY(dimension, x, z);
-  if (y === undefined) return;
-  placeChestAt(dimension, x, y, z, cellX, cellZ);
+  return (dimension) => {
+    const y = groundY(dimension, x, z);
+    if (y === undefined) return;
+    placeChestAt(dimension, x, y, z, cellX, cellZ);
+  };
 }
 
 /** The small pack build, one per REGION cell, attempted from its anchor tile. */
-function populateBuild(dimension, tileX, tileZ) {
+function gatherBuild(tileX, tileZ) {
   const regionX = Math.floor(tileX / REGION);
   const regionZ = Math.floor(tileZ / REGION);
-  if (tileX !== regionX * REGION || tileZ !== regionZ * REGION) return;
+  if (tileX !== regionX * REGION || tileZ !== regionZ * REGION) return null;
 
-  if (random(regionX, regionZ, 0x11) >= BUILD_CHANCE) return;
+  if (random(regionX, regionZ, 0x11) >= BUILD_CHANCE) return null;
   const x = regionX * REGION * 16 + 8;
   const z = regionZ * REGION * 16 + 8;
-  const y = groundY(dimension, x, z);
-  if (y === undefined) return;
-  placeBuild(dimension, pick(BUILDS, regionX, regionZ, 0x31), x, y, z);
+  const id = pick(BUILDS, regionX, regionZ, 0x31);
+  return (dimension) => {
+    const y = groundY(dimension, x, z);
+    if (y === undefined) return;
+    placeBuild(dimension, id, x, y, z);
+  };
 }
 
 /*
@@ -567,50 +600,62 @@ function populateBuild(dimension, tileX, tileZ) {
 const LANDMARKS = ["village", "shelter", "trial_chambers", "ancient_city"];
 const TREASURE_VAULT_CHANCE = 0.04;
 
-function populateLandmark(dimension, tileX, tileZ) {
+/*
+ * A landmark spans well over a tile (the largest pack build is 12 blocks wide
+ * and the village reaches 10 from its centre), so it cannot be raised the moment
+ * its anchor tile finishes: the next tile's column work would plough straight
+ * through it. The point of interest is therefore gathered here and handed back
+ * as a thunk, for the terrain generator to run only once the surrounding tiles
+ * exist.
+ */
+function gatherLandmark(tileX, tileZ) {
   const cellX = Math.floor(tileX / LANDMARK_REGION);
   const cellZ = Math.floor(tileZ / LANDMARK_REGION);
   const id = key(cellX, cellZ);
-  if (landmarkDone.has(id)) return;
-  if (tileX !== cellX * LANDMARK_REGION || tileZ !== cellZ * LANDMARK_REGION) return;
+  if (landmarkDone.has(id)) return null;
+  if (tileX !== cellX * LANDMARK_REGION || tileZ !== cellZ * LANDMARK_REGION) return null;
   landmarkDone.add(id);
 
-  if (random(cellX, cellZ, SALT_LANDMARK) >= LANDMARK_CHANCE) return;
+  if (random(cellX, cellZ, SALT_LANDMARK) >= LANDMARK_CHANCE) return null;
 
   const x = cellX * LANDMARK_REGION * 16 + 8;
   const z = cellZ * LANDMARK_REGION * 16 + 8;
-  const surface = groundY(dimension, x, z);
-  if (surface === undefined) return;
 
   // The vault takes the cell on its own rare roll, before the usual landmark.
   if (random(cellX, cellZ, SALT_VAULT) < TREASURE_VAULT_CHANCE) {
-    try {
-      buildTreasureVault(dimension, x, STONE_BOTTOM + 24, z);
-    } catch (error) {
-      console.warn(`[copper] treasure vault failed at ${x},${z}: ${error}`);
-    }
-    return;
+    const vy = STONE_BOTTOM + 24;
+    return (dimension) => {
+      try {
+        buildTreasureVault(dimension, x, vy, z);
+      } catch (error) {
+        console.warn(`[copper] treasure vault failed at ${x},${z}: ${error}`);
+      }
+    };
   }
 
   const kind = pick(LANDMARKS, cellX, cellZ, 0x42);
-  try {
-    switch (kind) {
-      case "village":
-        buildVillage(dimension, x, surface, z);
-        break;
-      case "shelter":
-        buildShelter(dimension, x, surface, z);
-        break;
-      case "trial_chambers":
-        buildTrialChambers(dimension, x, STONE_BOTTOM + 18, z);
-        break;
-      case "ancient_city":
-        buildAncientCity(dimension, x, STONE_BOTTOM + 2, z);
-        break;
+  return (dimension) => {
+    const surface = groundY(dimension, x, z);
+    if (surface === undefined) return;
+    try {
+      switch (kind) {
+        case "village":
+          buildVillage(dimension, x, surface, z);
+          break;
+        case "shelter":
+          buildShelter(dimension, x, surface, z);
+          break;
+        case "trial_chambers":
+          buildTrialChambers(dimension, x, STONE_BOTTOM + 18, z);
+          break;
+        case "ancient_city":
+          buildAncientCity(dimension, x, STONE_BOTTOM + 2, z);
+          break;
+      }
+    } catch (error) {
+      console.warn(`[copper] landmark "${kind}" failed at ${x},${z}: ${error}`);
     }
-  } catch (error) {
-    console.warn(`[copper] landmark "${kind}" failed at ${x},${z}: ${error}`);
-  }
+  };
 }
 
 /** A rare standing portal, one per landmark cell, at most. */
@@ -628,20 +673,23 @@ function populatePortal(dimension, tileX, tileZ) {
   buildPortal(dimension, x, y, z);
 }
 
-function populate(dimension, tileX, tileZ) {
-  populateBuild(dimension, tileX, tileZ);
-  populateChest(dimension, tileX, tileZ);
-  populateLandmark(dimension, tileX, tileZ);
-  populatePortal(dimension, tileX, tileZ);
-}
-
-/** Called by the terrain generator once a tile's ground exists. */
-export function populateTile(dimension, tileX, tileZ) {
+/**
+ * Raises everything that belongs to a finished tile: the pack builds, a chest,
+ * a landmark and perhaps a portal. Called by the terrain generator only after
+ * the tile's neighbourhood exists, so a build survives the columns of the tiles
+ * beside it. The chests are cheap and immediate; the landmarks are deliberate
+ * and worth the extra `groundY` read.
+ */
+export function buildTileContent(dimension, tileX, tileZ) {
   const id = key(tileX, tileZ);
-  if (done.has(id)) return;
-  done.add(id);
+  if (contentDone.has(id)) return;
+  contentDone.add(id);
   try {
-    populate(dimension, tileX, tileZ);
+    const jobs = [gatherBuild(tileX, tileZ), gatherChest(tileX, tileZ), gatherLandmark(tileX, tileZ)];
+    for (const job of jobs) {
+      if (job) job(dimension);
+    }
+    populatePortal(dimension, tileX, tileZ);
   } catch (error) {
     console.warn(`[copper] points of interest failed for tile ${id}: ${error}`);
   }

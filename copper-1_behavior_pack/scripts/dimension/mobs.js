@@ -8,18 +8,37 @@ import { world, system } from "@minecraft/server";
  * pack ships spawns by itself. This module is the replacement — a short roll
  * around each player, biased to the pack's own mobs.
  *
- * The dimension is meant to hold only villages, villagers, copper golems and
- * creepers, so the allow-list below is deliberately tiny.
+ * The copper workers arrive by their own element: bees in the air, fish in the
+ * water, moles under the ground, keepers on the land. Each is placed where its
+ * body can actually live, so none of them suffocates or drowns on arrival.
  */
 
 const COPPER_DIMENSION = "pa:copper_dimension";
-const CREEPER = "minecraft:creeper";
-const COPPER_GOLEM = "minecraft:copper_golem";
-const VILLAGER = "minecraft:villager";
 
-const SPAWN_RADIUS = 24;
-const MIN_DISTANCE = 12;
-const MAX_NEARBY = 12;
+const BEE = "pa:copper_bee";
+const FISH = "pa:copper_fish";
+const MOLE = "pa:copper_mole";
+const KEEPER = "pa:copper_keeper";
+
+/* The dimension stays mostly peaceful; the golem is the old pack resident and
+ * a rare creeper keeps the caves from being entirely safe. */
+const COPPER_GOLEM = "minecraft:copper_golem";
+const CREEPER = "minecraft:creeper";
+
+const SPAWN_RADIUS = 32;
+const MIN_DISTANCE = 14;
+const MAX_NEARBY = 20;
+
+const WATER = new Set(["minecraft:water", "minecraft:flowing_water"]);
+const SOFT_GROUND = new Set([
+  "pa:copper_stone",
+  "pa:copper_soil",
+  "pa:copper_grass",
+  "pa:weathered_copper_stone",
+  "pa:oxidized_copper_stone",
+  "minecraft:stone",
+  "minecraft:deepslate",
+]);
 
 system.runInterval(() => {
   for (const player of world.getPlayers()) {
@@ -31,7 +50,7 @@ system.runInterval(() => {
       console.warn(`[copper] mob spawn failed: ${error}`);
     }
   }
-}, 400);
+}, 300);
 
 function trySpawn(player) {
   const dimension = player.dimension;
@@ -45,12 +64,71 @@ function trySpawn(player) {
   const surface = dimension.getTopmostBlock({ x, z });
   if (!surface) return;
 
-  const type = Math.random() < 0.6 ? CREEPER : COPPER_GOLEM;
-  const y = surface.location.y + 1;
-  const below = dimension.getBlock(surface.location);
-  if (!below || below.isAir || below.isLiquid) return;
+  const ground = dimension.getBlock(surface.location);
+  if (!ground || ground.isAir) return;
 
-  dimension.spawnEntity(type, { x: x + 0.5, y, z: z + 0.5 });
+  const roll = Math.random();
+  if (WATER.has(ground.typeId)) {
+    // A column the player stands beside is the only place a fish can be placed
+    // without guessing where the water body is.
+    spawnInWater(dimension, x, surface.location.y, z);
+    return;
+  }
+
+  if (roll < 0.3) {
+    spawnFlying(dimension, x, surface.location.y, z);
+  } else if (roll < 0.5) {
+    spawnWalker(dimension, x, surface.location.y, z);
+  } else if (roll < 0.68 && SOFT_GROUND.has(ground.typeId)) {
+    spawnBurrower(dimension, x, surface.location.y, z);
+  } else if (roll < 0.8) {
+    spawnFlying(dimension, x, surface.location.y, z);
+  } else if (roll < 0.95) {
+    spawnEntity(dimension, COPPER_GOLEM, { x: x + 0.5, y: surface.location.y + 1, z: z + 0.5 });
+  } else {
+    spawnEntity(dimension, CREEPER, { x: x + 0.5, y: surface.location.y + 1, z: z + 0.5 });
+  }
+}
+
+function spawnEntity(dimension, typeId, at) {
+  if (!isAirAt(dimension, at)) return;
+  dimension.spawnEntity(typeId, at);
+}
+
+function spawnFlying(dimension, x, y, z) {
+  const at = { x: x + 0.5, y: y + 3, z: z + 0.5 };
+  if (!isAirAt(dimension, at)) return;
+  dimension.spawnEntity(BEE, at);
+}
+
+function spawnWalker(dimension, x, y, z) {
+  const at = { x: x + 0.5, y: y + 1, z: z + 0.5 };
+  if (!isAirAt(dimension, at)) return;
+  dimension.spawnEntity(KEEPER, at);
+}
+
+function spawnBurrower(dimension, x, y, z) {
+  // One block into the ground, which is where a mole belongs.
+  const at = { x: x + 0.5, y, z: z + 0.5 };
+  const block = dimension.getBlock({ x, y: Math.floor(y), z });
+  if (!block || block.isAir) return;
+  block.setType("minecraft:air");
+  dimension.spawnEntity(MOLE, at);
+}
+
+function spawnInWater(dimension, x, y, z) {
+  for (let dy = 0; dy > -6; dy--) {
+    const at = { x: x + 0.5, y: y + dy, z: z + 0.5 };
+    const block = dimension.getBlock({ x, y: Math.floor(at.y), z });
+    if (!block || !WATER.has(block.typeId)) break;
+    dimension.spawnEntity(FISH, at);
+    return;
+  }
+}
+
+function isAirAt(dimension, at) {
+  const block = dimension.getBlock(at);
+  return Boolean(block && block.isAir);
 }
 
 function nearbyCount(dimension, location) {
@@ -65,4 +143,4 @@ function nearbyCount(dimension, location) {
 
 // Referenced so the allow-list stays visible: villagers arrive with the village
 // build; these constants document that nothing else is meant to spawn.
-export const POPULATION = [CREEPER, COPPER_GOLEM, VILLAGER];
+export const POPULATION = [BEE, FISH, MOLE, KEEPER, COPPER_GOLEM, CREEPER];

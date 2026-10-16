@@ -1,0 +1,73 @@
+{
+  "format_version": "1.21.100",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "pa:copper_mole",
+      "is_spawnable": true,
+      "is_summonable": true
+    },
+    "component_groups": {
+      "pa:despawn": {
+        "minecraft:instant_despawn": {}
+      }
+    },
+    "components": {
+      "minecraft:type_family": {
+        "family": [ "pa_worker", "pa_burrower", "silverfish", "mob" ]
+      },
+      "minecraft:collision_box": { "width": 0.5, "height": 0.35 },
+      "minecraft:health": { "value": 12, "max": 12 },
+      "minecraft:movement": { "value": 0.3 },
+      "minecraft:navigation.walk": {
+        "can_path_over_water": false,
+        "avoid_water": true,
+        "avoid_damage_blocks": true
+      },
+      "minecraft:movement.basic": {},
+      "minecraft:jump.static": {},
+      "minecraft:can_climb": {},
+      "minecraft:breathable": {
+        "total_supply": 15,
+        "suffocate_time": 0,
+        "breathes_water": false
+      },
+      "minecraft:physics": {},
+      "minecraft:pushable": { "is_pushable": true, "is_pushable_by_piston": true },
+      "minecraft:nameable": { "always_show": false, "allow_name_tag_renaming": true },
+      "minecraft:conditional_bandwidth_optimization": {},
+      "minecraft:follow_range": { "value": 24, "max": 24 },
+      "minecraft:behavior.float": { "priority": 0 },
+      "minecraft:behavior.random_stroll": {
+        "priority": 6,
+        "speed_multiplier": 1,
+        "interval": 60,
+        "xz_dist": 12
+      },
+      "minecraft:behavior.look_at_player": {
+        "priority": 8,
+        "look_distance": 6,
+        "probability": 0.02
+      },
+      "minecraft:behavior.random_look_around": { "priority": 9 },
+      "minecraft:despawn": { "despawn_from_distance": { "min_distance": 44, "max_distance": 56 } },
+      "minecraft:hurt_on_condition": {
+        "damage_conditions": [
+          {
+            "cause": "lava",
+            "damage_per_tick": 4,
+            "filters": { "test": "in_lava", "subject": "self", "operator": "==", "value": true }
+          }
+        ]
+      },
+      "minecraft:damage_sensor": {
+        "triggers": [
+          { "cause": "fall", "deals_damage": "no" },
+          { "cause": "suffocation", "deals_damage": "no" }
+        ]
+      }
+    },
+    "events": {
+      "minecraft:entity_spawned": {}
+    }
+  }
+}

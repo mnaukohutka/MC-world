@@ -1,5 +1,5 @@
 import { world, system, BlockPermutation, BlockVolume } from "@minecraft/server";
-import { seedPoints, populateTile } from "../structures";
+import { seedPoints, buildTileContent, placeStarterChest } from "../structures";
 
 /*
  * Script-driven world generation for the Copper Dimension.
@@ -212,6 +212,12 @@ function topCap(biome, x, z) {
 
 let seed = 0;
 const generated = new Set();
+/*
+ * Tiles whose surroundings are complete enough to carry a structure. A tile is
+ * plain terrain first; once its 3x3 neighbourhood exists, any build waiting on
+ * it is raised and the tile is stamped `decorated`.
+ */
+const decorated = new Set();
 let running = false;
 const queued = [];
 const queueKeys = new Set();
@@ -489,13 +495,35 @@ function buildTile(dimension, tileX, tileZ) {
       placeTree(dimension, x, columnTops[index], z, columnBiome[index]);
     }
   }
+}
 
-  // Small ground cover last, so nothing overgrows it: mushrooms on mycelium,
-  // cacti on the badlands floor, snow caps on the cold biome.
+/** True once every tile in the 3x3 block around (tileX, tileZ) has ground. */
+function neighbourhoodReady(tileX, tileZ) {
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+      if (!generated.has(key(tileX + dx, tileZ + dz))) return false;
+    }
+  }
+  return true;
+}
+
+/*
+ * Final ground cover for a tile, run once its neighbourhood exists. Doing it
+ * only now — rather than during `buildTile` — means a column's biome is taken
+ * from finished terrain, so a flower is not planted in a spot that a later tile
+ * would have flattened, and a build raised nearby does not leave half its
+ * meadow buried. It is written into air only, so it never digs into a structure.
+ */
+function decorateTile(dimension, tileX, tileZ) {
+  const baseX = tileX * TILE;
+  const baseZ = tileZ * TILE;
   for (let dx = 1; dx < TILE - 1; dx++) {
     for (let dz = 1; dz < TILE - 1; dz++) {
-      const index = dx * TILE + dz;
-      decorateColumn(dimension, baseX + dx, columnTops[index], baseZ + dz, columnBiome[index]);
+      const x = baseX + dx;
+      const z = baseZ + dz;
+      const top = surfaceHeight(x, z);
+      const biome = biomeAt(x, z, top);
+      decorateColumn(dimension, x, top, z, biome);
     }
   }
 }
@@ -617,32 +645,79 @@ function hangLanterns(dimension, x, top, z, biome) {
   if (socket && socket.isAir) socket.setPermutation(lantern);
 }
 
+async function drainQueue(dimension) {
+  while (queued.length > 0) {
+    const job = queued.shift();
+    queueKeys.delete(key(job.tileX, job.tileZ));
+    const tileId = key(job.tileX, job.tileZ);
+    if (decorated.has(tileId)) continue;
+
+    const from = { x: job.tileX * TILE, y: MIN_Y, z: job.tileZ * TILE };
+    const to = { x: from.x + TILE - 1, y: MAX_Y, z: from.z + TILE - 1 };
+    const areaId = `pa_gen_${job.playerId}_${job.tileX}_${job.tileZ}`;
+    const options = { dimension, from, to };
+    if (!world.tickingAreaManager.hasCapacity(options)) break;
+
+    await world.tickingAreaManager.createTickingArea(areaId, options);
+    try {
+      /*
+       * Two passes. A tile lays plain terrain first; only once its 3x3
+       * neighbourhood exists does it raise the structures that span it and
+       * take its final ground cover. Building a landmark the moment its own
+       * tile finished would let the very next tile's column work plough
+       * through it, which is exactly what left the dimension almost empty.
+       */
+      if (!generated.has(tileId)) {
+        buildTile(dimension, job.tileX, job.tileZ);
+        generated.add(tileId);
+      }
+      if (neighbourhoodReady(job.tileX, job.tileZ) && !decorated.has(tileId)) {
+        // Ground cover first, then the structures: a build should overwrite a
+        // stray flower, not the other way round.
+        decorateTile(dimension, job.tileX, job.tileZ);
+        buildTileContent(dimension, job.tileX, job.tileZ);
+        decorated.add(tileId);
+      }
+    } catch (error) {
+      // One bad tile must not drain the whole queue: the terrain loop keeps
+      // feeding it, and a single unknown block would otherwise stall the
+      // dimension for every player. Leave the tile unmarked so it can be
+      // rebuilt once the cause is fixed.
+      console.warn(`[copper] tile ${job.tileX},${job.tileZ} failed: ${error}`);
+    } finally {
+      if (world.tickingAreaManager.hasTickingArea(areaId)) {
+        world.tickingAreaManager.removeTickingArea(areaId);
+      }
+    }
+    await yieldToGame();
+  }
+}
+
 async function runQueue(dimension) {
   if (running) return;
   running = true;
   try {
-    while (queued.length > 0) {
-      const job = queued.shift();
-      queueKeys.delete(key(job.tileX, job.tileZ));
-      if (generated.has(key(job.tileX, job.tileZ))) continue;
+    await drainQueue(dimension);
 
-      const from = { x: job.tileX * TILE, y: MIN_Y, z: job.tileZ * TILE };
-      const to = { x: from.x + TILE - 1, y: MAX_Y, z: from.z + TILE - 1 };
-      const areaId = `pa_gen_${job.playerId}_${job.tileX}_${job.tileZ}`;
-      const options = { dimension, from, to };
-      if (!world.tickingAreaManager.hasCapacity(options)) break;
-
-      await world.tickingAreaManager.createTickingArea(areaId, options);
-      try {
-        buildTile(dimension, job.tileX, job.tileZ);
-        populateTile(dimension, job.tileX, job.tileZ);
-        generated.add(key(job.tileX, job.tileZ));
-      } finally {
-        if (world.tickingAreaManager.hasTickingArea(areaId)) {
-          world.tickingAreaManager.removeTickingArea(areaId);
-        }
+    /*
+     * Closing pass. The drain stops as soon as the queue is empty, but a tile
+     * that was waiting on neighbours when it was first offered is never offered
+     * again by the player-driven loop — the player has already moved on. Walk
+     * the built tiles once more and re-offer every one whose neighbourhood has
+     * since arrived, so a build at the trailing edge of the generation window
+     * still gets raised instead of sitting in a permanent half-finished state.
+     */
+    for (;;) {
+      const before = decorated.size;
+      for (const tileId of generated) {
+        if (decorated.has(tileId)) continue;
+        const [tx, tz] = tileId.split(",").map(Number);
+        if (neighbourhoodReady(tx, tz)) enqueueTile("settle", tx, tz);
       }
-      await yieldToGame();
+      if (queued.length === 0) break;
+      await drainQueue(dimension);
+      // A tile that keeps throwing must not spin the pass forever.
+      if (decorated.size === before) break;
     }
   } catch (error) {
     console.warn(`[copper] terrain generation stopped: ${error}`);
@@ -658,7 +733,10 @@ function yieldToGame() {
 
 function enqueueTile(playerId, tileX, tileZ) {
   const id = key(tileX, tileZ);
-  if (generated.has(id) || queueKeys.has(id)) return;
+  // Re-offer a tile until it is fully decorated, not merely built: its
+  // neighbourhood may still be missing, and that is the guard for raising the
+  // structures that span it.
+  if (decorated.has(id) || queueKeys.has(id)) return;
   queueKeys.add(id);
   queued.push({ playerId, tileX, tileZ });
 }
@@ -699,6 +777,9 @@ export function buildSpawnPad(dimension, spawn) {
     grass(),
     { ignoreChunkBoundErrors: true }
   );
+  // A guaranteed chest beside the pad: the scattered chests are deliberately
+  // sparse, and a player should still see the loot system on arrival.
+  placeStarterChest(dimension, spawn);
 }
 
 export function seedTerrain(worldSeed) {

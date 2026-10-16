@@ -113,3 +113,50 @@ metadata/json_schemas/server/block/<ver>/.
   and `minecraft:light_emission`, and `pa_copper_lamp:trigger` toggles the state
   on interact. There is no script hook for redstone power on a custom block, so
   a redstone-driven lamp is not possible — the interact is deliberate.
+- A block's custom-component key is the *registered* id verbatim, not the block
+  id plus a suffix. Writing `"pa:copper_lamp:trigger"` where the script
+  registered `pa_copper_lamp:trigger` is an identifier with two colons: Bedrock
+  rejects it ("child ... not valid here"), the whole block fails to parse, and
+  the fallout reads as unrelated errors — "Block type pa:copper_lamp not found",
+  a broken recipe and terrain generation stopping. Keep the key and
+  `registerCustomComponent` argument byte-identical.
+- Two shaped recipes with the same pattern and key items collide: Bedrock logs a
+  duplicate-recipe warning and only one wins. Give a custom recipe its own
+  ingredients rather than reusing a vanilla pattern (e.g. patina from oxidized
+  copper *grate*, not the plain oxidized copper that already makes cut copper).
+- Script-driven terrain must finish a tile's *neighbourhood* before it raises
+  anything that spans tiles. `buildTile` writes whole columns from `MIN_Y` to
+  `MAX_Y`, so a landmark placed the moment its own tile finished was ploughed
+  through by the next tile's column work — the dimension looked almost empty
+  while the builders themselves worked. The queue now lays plain ground first,
+  and only calls `buildTileContent` (landmarks, pack builds, chests, portals) and
+  `decorateTile` (biome ground cover) once all nine tiles of the 3x3 are
+  `generated`. Any build whose footprint is larger than one tile needs this.
+- `groundY` uses `dimension.getTopmostBlock`, which reports the *build* ceiling
+  for a still-unloaded column. Structures placed from that height land at y=320
+  and vanish. Keep the ceiling rejection in `groundY`.
+
+## Round-5: workers and chests
+
+- `spawn_rules/*.json` matches on a biome tag and a script-registered dimension
+  has no biome, so nothing the pack ships spawns on its own. Mobs must be
+  spawned from script (`scripts/dimension/mobs.js`): roll around each player,
+  then place the body where the type can actually live (flyer in air, fish
+  inside water, burrower after carving its own space), or it suffocates.
+- A chest's inventory component is only attached while its chunk is inside a
+  ticking area. `system.run(...)` defers past that window — the area is removed
+  the moment the tile finishes — so a deferred fill leaves the chest empty.
+  Fill immediately and fall back to `system.run` only if the container is
+  missing.
+- A custom mob's `family` list is what `dimension.getEntities({ families })`
+  filters on. Give every worker a shared `pa_worker` family so one ticker can
+  drive them all, plus a movement family (`pa_flyer`/`pa_swimmer`/`pa_walker`/
+  `pa_burrower`).
+- `@minecraft/server` V2 exposes only `blockComponentRegistry` and
+  `itemComponentRegistry`; there is no entity component registry, so custom mob
+  AI is a central `system.runInterval` ticker, not a registered component.
+- The copper bulb is `minecraft:copper_bulb` and its state is `lit` (unlike the
+  pack's own `pa:copper_lamp:pa:lit`). Particle ids are the full identifiers:
+  `minecraft:basic_bubble_particle`, `minecraft:basic_crit_particle`,
+  `minecraft:crop_growth_emitter`, not the file names.
+
