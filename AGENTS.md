@@ -230,3 +230,29 @@ metadata/json_schemas/server/block/<ver>/.
   geometry.pa_ghost with an explicit per-cube uv block gives full control of the
   face; the texture is drawn at 64x64 with the face cells at the cube north and
   south UV rectangles.
+
+
+## Round-10: /locate for structures and biomes
+
+- The world is script-generated and every point of interest is a pure function of
+  its cell coordinates and the world seed, so /locate needs no block scan: it
+  walks the same plan grids the generator fills and returns the first matching
+  cell. This is why structures.js exports buildAt / chestAt / landmarkAt -- the
+  command and the generator share the arithmetic, so a reported spot is one that
+  exists. Keep them pure; a block read in a planner would break the command.
+- A registered custom dimension has no biome registry, so the vanilla /locate
+  cannot see the copper biomes. locate.js decides a column biome from
+  biomeAtColumn (a pure noise read), and its search walks outward in rings of
+  columns, testing only each ring perimeter so the cost is linear in the radius.
+  A biome field is low-frequency: the step is 8 blocks and the range is capped so
+  the callback cannot trip the script watchdog.
+- A command enum rejects hyphens and capitals, so a build id such as
+  copper_lucerna-A1 is folded to copper_lucerna_a1 for the enum and mapped back
+  through a tokens table. Landmark kinds are already enum-safe.
+- Custom commands are registered once, in a system.beforeEvents.startup handler
+  (safeSubscribe / registerCommand). The callback runs in read-only mode, so any
+  teleport or terrain work has to be deferred through system.run.
+- A structure a player has not visited has no ground yet, so a surface build has
+  no Y to report. locate reporting uses the generator predicted surface
+  (predictedSurface) as the fallback for exactly that case; a buried landmark has
+  a fixed Y from the LANDMARK_DEPTH table.

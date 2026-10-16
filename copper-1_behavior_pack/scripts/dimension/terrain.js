@@ -459,6 +459,39 @@ function surfaceHeight(x, z) {
   return Math.round(height);
 }
 
+/**
+ * The biomes this dimension knows, in the order they should appear in a command
+ * enum, with the short key a player types in place of the block identifier.
+ */
+export const BIOMES = [
+  { id: PLAIN, key: "plain", label: "Copper Plain" },
+  { id: FOREST, key: "forest", label: "Copper Forest" },
+  { id: MOUNTAIN, key: "mountain", label: "Copper Mountain" },
+  { id: OCEAN, key: "ocean", label: "Copper Ocean" },
+  { id: SWAMP, key: "swamp", label: "Copper Swamp" },
+  { id: MUSHROOM, key: "mushroom", label: "Copper Mushroom" },
+  { id: BADLANDS, key: "badlands", label: "Copper Badlands" },
+  { id: SNOW, key: "snow", label: "Copper Snow" },
+  { id: BEACH, key: "beach", label: "Copper Beach" },
+];
+
+const BIOME_BY_KEY = new Map(BIOMES.map((biome) => [biome.key, biome.id]));
+
+/** The biome identifier for a short key, or `undefined` if it is unknown. */
+export function biomeFor(key) {
+  return BIOME_BY_KEY.get(key);
+}
+
+/** The biome a column belongs to, from its coordinates alone — no block reads. */
+export function biomeAtColumn(x, z) {
+  return biomeAt(x, z, surfaceHeight(x, z));
+}
+
+/** The generated surface height of a column, from its coordinates alone. */
+export function predictedSurface(x, z) {
+  return surfaceHeight(x, z);
+}
+
 /** Trees per biome. Swamp is dense and mushroom is spore-laden; snow is sparse. */
 function treeDensity(biome) {
   switch (biome) {
