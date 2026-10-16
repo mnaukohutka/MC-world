@@ -26,7 +26,6 @@
         "walk": "animation.quadruped.walk",
         "look_at_target": "animation.common.look_at_target"
       },
-      "animation_controllers": null,
       "render_controllers": [
         "controller.render.default"
       ],

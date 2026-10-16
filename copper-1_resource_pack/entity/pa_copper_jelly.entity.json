@@ -22,7 +22,6 @@
         "move": "animation.squid.move",
         "squid_rotate": "animation.squid.rotate"
       },
-      "animation_controllers": null,
       "render_controllers": [
         "controller.render.default"
       ],
