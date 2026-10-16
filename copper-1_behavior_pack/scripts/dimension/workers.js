@@ -1,4 +1,4 @@
-import { world, system, ItemStack } from "@minecraft/server";
+import { world, system, ItemStack, MolangVariableMap } from "@minecraft/server";
 
 /*
  * The copper workers' brain.
@@ -183,7 +183,7 @@ function moleWork(worker, dimension) {
   const block = dimension.getBlock(ore);
   if (!block) return;
   safeSet(dimension, ore, COPPER_SOIL);
-  dimension.spawnParticle("minecraft:basic_crit_particle", above(ore));
+  dimension.spawnParticle("minecraft:basic_crit_particle", above(ore), directionVariables({ x: 0, y: 1, z: 0 }));
   dimension.playSound("dig.stone", above(ore), { pitch: 0.8, volume: 0.5 });
 
   const drop = dimension.spawnItem(new ItemStack("minecraft:raw_copper", 1), above(ore));
@@ -512,6 +512,18 @@ function burrow(worker, dimension) {
 
 function above(at) {
   return { x: at.x + 0.5, y: at.y + 1, z: at.z + 0.5 };
+}
+
+/*
+ * `minecraft:basic_crit_particle` reads `variable.direction.x/y/z` in its
+ * emitter shape with no default, so spawning it without a map logs
+ * "unable to find member variable .x" once per particle. The direction is a
+ * unit vector the particle throws its sprites along.
+ */
+function directionVariables(direction) {
+  const variables = new MolangVariableMap();
+  variables.setVector3("direction", direction);
+  return variables;
 }
 
 function distance(a, b) {

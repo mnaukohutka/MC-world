@@ -18,13 +18,8 @@
         ]
       },
       "animations": {
-        "move": "animation.silverfish.move"
+        "move": "controller.animation.silverfish.move"
       },
-      "animation_controllers": [
-        {
-          "move": "controller.animation.silverfish.move"
-        }
-      ],
       "render_controllers": [
         "controller.render.default"
       ],

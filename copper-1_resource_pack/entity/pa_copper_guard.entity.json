@@ -22,7 +22,6 @@
         "walk": "animation.goat.walk",
         "look_at_target": "animation.goat.look_at_target"
       },
-      "animation_controllers": null,
       "render_controllers": [
         "controller.render.default"
       ],
