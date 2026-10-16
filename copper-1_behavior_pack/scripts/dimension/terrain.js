@@ -637,6 +637,12 @@ async function runQueue(dimension) {
         buildTile(dimension, job.tileX, job.tileZ);
         populateTile(dimension, job.tileX, job.tileZ);
         generated.add(key(job.tileX, job.tileZ));
+      } catch (error) {
+        // One bad tile must not drain the whole queue: the terrain loop keeps
+        // feeding it, and a single unknown block would otherwise stall the
+        // dimension for every player. Leave the tile unmarked so it can be
+        // rebuilt once the cause is fixed.
+        console.warn(`[copper] tile ${job.tileX},${job.tileZ} failed: ${error}`);
       } finally {
         if (world.tickingAreaManager.hasTickingArea(areaId)) {
           world.tickingAreaManager.removeTickingArea(areaId);

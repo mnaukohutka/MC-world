@@ -28,7 +28,7 @@
         }
       },
       "minecraft:map_color": "#FFD68C",
-      "pa:copper_lamp:trigger": {}
+      "pa_copper_lamp:trigger": {}
     },
     "permutations": [
       {
