@@ -1,0 +1,29 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:block": {
+    "description": {
+      "identifier": "pa:vermilion_leaves",
+      "menu_category": {
+        "category": "nature"
+      }
+    },
+    "components": {
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.3
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 0.2
+      },
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "pa_vermilion_leaves",
+          "render_method": "alpha_test_single_sided"
+        }
+      },
+      "minecraft:map_color": "#8a4a2a",
+      "minecraft:light_dampening": 1,
+      "minecraft:loot": "loot_tables/blocks/vermilion_leaves.json"
+    }
+  }
+}

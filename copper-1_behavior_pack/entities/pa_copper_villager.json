@@ -1,0 +1,286 @@
+{
+  "format_version": "1.21.100",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "pa:copper_villager",
+      "is_spawnable": true,
+      "is_summonable": true
+    },
+    "component_groups": {
+      "pa:despawn": {
+        "minecraft:instant_despawn": {}
+      },
+      "pa:adult": {
+        "minecraft:movement": {
+          "value": 0.5
+        },
+        "minecraft:scale": {
+          "value": 1.0
+        }
+      },
+      "pa:baby": {
+        "minecraft:movement": {
+          "value": 0.5
+        },
+        "minecraft:scale": {
+          "value": 0.5
+        },
+        "minecraft:is_baby": {},
+        "minecraft:behavior.follow_parent": {
+          "priority": 6,
+          "speed_multiplier": 0.8
+        }
+      }
+    },
+    "components": {
+      "minecraft:type_family": {
+        "family": [
+          "pa_copper_villager",
+          "villager",
+          "pa_walker",
+          "mob"
+        ]
+      },
+      "minecraft:collision_box": {
+        "width": 0.6,
+        "height": 1.9
+      },
+      "minecraft:health": {
+        "value": 20,
+        "max": 20
+      },
+      "minecraft:movement": {
+        "value": 0.5
+      },
+      "minecraft:navigation.walk": {
+        "avoid_water": true,
+        "can_path_over_water": true,
+        "avoid_damage_blocks": true,
+        "can_pass_doors": true,
+        "can_open_doors": true
+      },
+      "minecraft:movement.basic": {},
+      "minecraft:jump.static": {},
+      "minecraft:can_climb": {},
+      "minecraft:breathable": {
+        "total_supply": 15,
+        "suffocate_time": 0
+      },
+      "minecraft:physics": {},
+      "minecraft:pushable": {
+        "is_pushable": true,
+        "is_pushable_by_piston": true
+      },
+      "minecraft:annotation.open_door": {},
+      "minecraft:nameable": {
+        "always_show": false,
+        "allow_name_tag_renaming": true
+      },
+      "minecraft:persistent": {},
+      "minecraft:conditional_bandwidth_optimization": {},
+      "minecraft:follow_range": {
+        "value": 24,
+        "max": 24
+      },
+      "minecraft:inventory": {
+        "inventory_size": 8,
+        "private": true
+      },
+      "minecraft:dweller": {
+        "can_find_poi": true,
+        "dwelling_type": "village",
+        "can_migrate": true,
+        "dweller_role": "inhabitant",
+        "first_founding_reward": 5,
+        "update_interval_base": 60,
+        "update_interval_variant": 40
+      },
+      "minecraft:economy_trade_table": {
+        "display_name": "entity.pa:copper_villager.miner",
+        "new_screen": true,
+        "persist_trades": true,
+        "table": "trading/copper_miner_trades.json"
+      },
+      "minecraft:behavior.trade_with_player": {
+        "priority": 2,
+        "filters": {
+          "all_of": [
+            {
+              "all_of": [
+                {
+                  "test": "in_water",
+                  "value": false
+                }
+              ]
+            },
+            {
+              "any_of": [
+                {
+                  "test": "on_ground",
+                  "value": true
+                },
+                {
+                  "test": "is_sleeping",
+                  "value": true
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "minecraft:behavior.look_at_trading_player": {
+        "priority": 7
+      },
+      "minecraft:behavior.panic": {
+        "priority": 1,
+        "speed_multiplier": 0.6
+      },
+      "minecraft:behavior.float": {
+        "priority": 0
+      },
+      "minecraft:behavior.move_indoors": {
+        "priority": 6,
+        "speed_multiplier": 0.8,
+        "timeout_cooldown": 8
+      },
+      "minecraft:behavior.move_towards_dwelling_restriction": {
+        "priority": 11,
+        "speed_multiplier": 0.6
+      },
+      "minecraft:behavior.pickup_items": {
+        "priority": 4,
+        "max_dist": 3,
+        "goal_radius": 2,
+        "speed_multiplier": 0.5,
+        "can_pickup_to_hand_or_equipment": false
+      },
+      "minecraft:behavior.share_items": {
+        "priority": 10,
+        "max_dist": 3,
+        "goal_radius": 2,
+        "speed_multiplier": 0.5,
+        "entity_types": [
+          {
+            "filters": {
+              "subject": "other",
+              "test": "is_family",
+              "value": "villager"
+            }
+          }
+        ]
+      },
+      "minecraft:behavior.random_stroll": {
+        "priority": 11,
+        "speed_multiplier": 0.6
+      },
+      "minecraft:behavior.look_at_player": {
+        "priority": 9,
+        "look_distance": 8,
+        "probability": 0.02
+      },
+      "minecraft:behavior.random_look_around": {
+        "priority": 10
+      },
+      "minecraft:behavior.avoid_mob_type": {
+        "priority": 3,
+        "entity_types": [
+          {
+            "filters": {
+              "any_of": [
+                {
+                  "test": "is_family",
+                  "subject": "other",
+                  "value": "zombie"
+                },
+                {
+                  "test": "is_family",
+                  "subject": "other",
+                  "value": "monster"
+                }
+              ]
+            },
+            "max_dist": 8,
+            "walk_speed_multiplier": 0.8,
+            "sprint_speed_multiplier": 1.2
+          }
+        ]
+      },
+      "minecraft:damage_sensor": {
+        "triggers": [
+          {
+            "cause": "fall",
+            "deals_damage": "no"
+          },
+          {
+            "on_damage": {
+              "filters": {
+                "test": "is_family",
+                "subject": "other",
+                "value": "lightning"
+              }
+            },
+            "deals_damage": "yes",
+            "cause": "lightning"
+          }
+        ]
+      },
+      "minecraft:loot": {
+        "table": "loot_tables/entities/pa_copper_villager.json"
+      },
+      "minecraft:despawn": {
+        "despawn_from_distance": {
+          "min_distance": 44,
+          "max_distance": 56
+        }
+      }
+    },
+    "events": {
+      "minecraft:entity_spawned": {
+        "sequence": [
+          {
+            "filters": {
+              "test": "is_baby",
+              "subject": "self"
+            },
+            "add": {
+              "component_groups": [
+                "pa:baby"
+              ]
+            },
+            "remove": {
+              "component_groups": [
+                "pa:adult"
+              ]
+            }
+          },
+          {
+            "add": {
+              "component_groups": [
+                "pa:adult"
+              ]
+            }
+          }
+        ]
+      },
+      "minecraft:entity_born": {
+        "add": {
+          "component_groups": [
+            "pa:baby"
+          ]
+        }
+      },
+      "minecraft:ageable_grow_up": {
+        "remove": {
+          "component_groups": [
+            "pa:baby"
+          ]
+        },
+        "add": {
+          "component_groups": [
+            "pa:adult"
+          ]
+        }
+      }
+    }
+  }
+}

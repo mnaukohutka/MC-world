@@ -51,30 +51,50 @@ onStepOff: e => { e.entity.addEffect("minecraft:hunger", 1400.0, { amplifier: 1 
      */
     onTick: e => {
       if (Math.random() > 0.2) return;
-      growSapling(e.block, e.dimension);
+      growSapling(e.block, e.dimension, COPPER_TREE);
     },
-    onPlayerInteract: e => {
-    const { block, dimension, player } = e;
-    if (!player) return;
+    onPlayerInteract: e => boneMeal(e, COPPER_TREE),
+  });
 
-    const equippable = player.getComponent("minecraft:equippable");
-    if (!equippable) return;
+  // The two round-7 tree species grow from their own saplings the same way.
+  initEvent.blockComponentRegistry.registerCustomComponent('pa_verdigris_sapling:trigger', {
+    onTick: e => {
+      if (Math.random() > 0.2) return;
+      growSapling(e.block, e.dimension, VERDIGRIS_TREE);
+    },
+    onPlayerInteract: e => boneMeal(e, VERDIGRIS_TREE),
+  });
 
-    const mainhand = equippable.getEquipmentSlot("Mainhand");
-    if (!mainhand.hasItem() || mainhand.typeId !== "minecraft:bone_meal") return;
+  initEvent.blockComponentRegistry.registerCustomComponent('pa_vermilion_sapling:trigger', {
+    onTick: e => {
+      if (Math.random() > 0.2) return;
+      growSapling(e.block, e.dimension, VERMILION_TREE);
+    },
+    onPlayerInteract: e => boneMeal(e, VERMILION_TREE),
+  });
 
-    if (mainhand.amount > 1) mainhand.amount--;
-    else mainhand.setItem(undefined);
+/** Bone meal speeds a sapling along, the way it does for a vanilla sapling. */
+function boneMeal(e, tree) {
+  const { block, dimension, player } = e;
+  if (!player) return;
 
-    growSapling(block, dimension);
-    const effectLocation = block.center();
-    dimension.playSound("item.bone_meal.use", effectLocation);
-    dimension.spawnParticle("minecraft:crop_growth_emitter", effectLocation);
-  },
-});
+  const equippable = player.getComponent("minecraft:equippable");
+  if (!equippable) return;
+
+  const mainhand = equippable.getEquipmentSlot("Mainhand");
+  if (!mainhand.hasItem() || mainhand.typeId !== "minecraft:bone_meal") return;
+
+  if (mainhand.amount > 1) mainhand.amount--;
+  else mainhand.setItem(undefined);
+
+  growSapling(block, dimension, tree);
+  const effectLocation = block.center();
+  dimension.playSound("item.bone_meal.use", effectLocation);
+  dimension.spawnParticle("minecraft:crop_growth_emitter", effectLocation);
+}
 
 /** Grows a copper tree from a sapling, feature first, script build as fallback. */
-function growSapling(block, dimension) {
+function growSapling(block, dimension, tree) {
   const at = { ...block.location };
   at.x = Math.floor(at.x);
   at.y = Math.floor(at.y);
@@ -86,16 +106,18 @@ function growSapling(block, dimension) {
    * placement is refused, which is why saplings never grew. A hand-built tree
    * guarantees growth either way.
    */
-  try {
-    if (dimension.placeFeature("pa:tree_copper", at, false)) {
-      block.setType("minecraft:air");
-      return;
+  if (tree === COPPER_TREE) {
+    try {
+      if (dimension.placeFeature("pa:tree_copper", at, false)) {
+        block.setType("minecraft:air");
+        return;
+      }
+    } catch (error) {
+      // Refused for any reason; fall through to the script build.
     }
-  } catch (error) {
-    // Refused for any reason; fall through to the script build.
   }
 
-  buildCopperTree(dimension, at);
+  buildTree(dimension, at, tree);
 }
 
 /*
@@ -105,8 +127,9 @@ function growSapling(block, dimension) {
  * damaged, and a low roof above the sapling refuses the growth rather than
  * cutting the canopy in half.
  */
-const TREE_LOG = "pa:copper_wood";
-const TREE_LEAF = "pa:copper_leaves";
+const COPPER_TREE = { wood: "pa:copper_wood", leaves: "pa:copper_leaves", sapling: "pa:custom_sapling_copper" };
+const VERDIGRIS_TREE = { wood: "pa:verdigris_wood", leaves: "pa:verdigris_leaves", sapling: "pa:verdigris_sapling" };
+const VERMILION_TREE = { wood: "pa:vermilion_wood", leaves: "pa:vermilion_leaves", sapling: "pa:vermilion_sapling" };
 const TREE_CHAIN = "minecraft:copper_chain";
 const TREE_LANTERN = "minecraft:copper_lantern";
 
@@ -118,17 +141,17 @@ function cellAt(dimension, x, y, z) {
   }
 }
 
-function buildCopperTree(dimension, at) {
+function buildTree(dimension, at, tree) {
   const trunk = 5 + Math.floor(Math.random() * 3);
 
   for (let i = 0; i <= trunk; i++) {
     const cell = cellAt(dimension, at.x, at.y + i, at.z);
     if (!cell) return;
-    if (!(cell.isAir || cell.typeId === TREE_LEAF || cell.typeId === "pa:custom_sapling_copper")) return;
+    if (!(cell.isAir || cell.typeId === tree.leaves || cell.typeId === tree.sapling)) return;
   }
 
   for (let i = 0; i < trunk; i++) {
-    cellAt(dimension, at.x, at.y + i, at.z)?.setType(TREE_LOG);
+    cellAt(dimension, at.x, at.y + i, at.z)?.setType(tree.wood);
   }
 
   const canopy = at.y + trunk;
@@ -138,11 +161,12 @@ function buildCopperTree(dimension, at) {
       for (let oz = -radius; oz <= radius; oz++) {
         if (ox === 0 && oz === 0 && dy <= 0) continue;
         const cell = cellAt(dimension, at.x + ox, canopy + dy, at.z + oz);
-        if (cell && cell.isAir) cell.setType(TREE_LEAF);
+        if (cell && cell.isAir) cell.setType(tree.leaves);
       }
     }
   }
-  cellAt(dimension, at.x, canopy + 1, at.z)?.setType(TREE_LEAF);
+
+  cellAt(dimension, at.x, canopy + 1, at.z)?.setType(tree.leaves);
 
   if (Math.random() >= 0.2) return;
   const [ox, oz] = [[2, 0], [-2, 0], [0, 2], [0, -2]][Math.floor(Math.random() * 4)];

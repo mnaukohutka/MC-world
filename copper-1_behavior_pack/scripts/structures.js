@@ -294,19 +294,21 @@ function buildVillage(dimension, x, y, z) {
   setBlock(dimension, x + 3, y + 1, z + 3, P.statue);
   setBlock(dimension, x - 3, y + 1, z - 3, P.bars);
 
-  // Villagers and an iron golem to bring the place alive, deferred so the ground
-  // under them has settled.
+  // Copper villagers and a copper golem bring the place alive, deferred so the
+  // ground under them has settled. The pack's own villager is used rather than
+  // the vanilla one, so the village trades in copper, not in the overworld's
+  // goods.
   system.run(() => {
     for (let i = 0; i < huts.length; i++) {
       const [ox, oz] = huts[i];
       try {
-        dimension.spawnEntity("minecraft:villager", { x: x + ox + 0.5, y: y + 1, z: z + oz + 0.5 });
+        dimension.spawnEntity("pa:copper_villager", { x: x + ox + 0.5, y: y + 1, z: z + oz + 0.5 });
       } catch {
         // Chunk gone; fewer villagers is not worth an error.
       }
     }
     try {
-      dimension.spawnEntity("minecraft:iron_golem", { x: x + 0.5, y: y + 1, z: z + 0.5 });
+      dimension.spawnEntity("minecraft:copper_golem", { x: x + 0.5, y: y + 1, z: z + 0.5 });
     } catch {
       // Same as above.
     }

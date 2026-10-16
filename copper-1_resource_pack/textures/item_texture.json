@@ -13,6 +13,15 @@
     },
     "pa_fluid_copper_oxidized_bucket": {
       "textures": "textures/items/pa_fluid_copper_oxidized_bucket"
+    },
+    "pa_copper_berry": {
+      "textures": "textures/items/pa_copper_berry"
+    },
+    "pa_vermilion_sapling": {
+      "textures": "textures/blocks/pa_vermilion_leaves"
+    },
+    "pa_verdigris_sapling": {
+      "textures": "textures/blocks/pa_verdigris_leaves"
     }
   }
 }

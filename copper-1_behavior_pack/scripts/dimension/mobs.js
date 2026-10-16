@@ -33,6 +33,15 @@ const BAT = "pa:copper_bat";
 const MITE = "pa:copper_mite";
 const WISP = "pa:copper_wisp";
 
+/* Round-7 residents: a second miner, two walkers and a drifter, so each class
+ * of mob has company and the dimension reads as a population rather than a
+ * handful of regulars. */
+const BORER = "pa:copper_borer";
+const GUARD = "pa:copper_guard";
+const BOAR = "pa:copper_boar";
+const JELLY = "pa:copper_jelly";
+const VILLAGER = "pa:copper_villager";
+
 /* The dimension stays mostly peaceful; the golem is the old pack resident and
  * a rare creeper keeps the caves from being entirely safe. */
 const COPPER_GOLEM = "minecraft:copper_golem";
@@ -92,29 +101,36 @@ function trySpawn(player) {
   if (ANY_FLUID.has(ground.typeId)) {
     if (COPPER_FLUID.has(ground.typeId)) spawnSchool(dimension, x, surface.location.y, z, MINNOW);
     else spawnSchool(dimension, x, surface.location.y, z, FISH);
+    if (Math.random() < 0.32) spawnSchool(dimension, x, surface.location.y, z, JELLY);
     if (Math.random() < 0.35) spawnShore(dimension, x, surface.location.y, z);
     return;
   }
 
   const roll = Math.random();
-  if (roll < 0.2) {
+  if (roll < 0.16) {
     spawnHerd(dimension, x, surface.location.y, z, BEE, 3);
-  } else if (roll < 0.34) {
+  } else if (roll < 0.28) {
     spawnHerd(dimension, x, surface.location.y, z, KEEPER, 2);
-  } else if (roll < 0.44 && SOFT_GROUND.has(ground.typeId)) {
+  } else if (roll < 0.36 && SOFT_GROUND.has(ground.typeId)) {
     spawnBurrower(dimension, x, surface.location.y, z, MOLE);
-  } else if (roll < 0.54 && SOFT_GROUND.has(ground.typeId)) {
+  } else if (roll < 0.44 && SOFT_GROUND.has(ground.typeId)) {
+    spawnBurrower(dimension, x, surface.location.y, z, BORER);
+  } else if (roll < 0.50 && SOFT_GROUND.has(ground.typeId)) {
     spawnBurrower(dimension, x, surface.location.y, z, MITE);
-  } else if (roll < 0.64) {
+  } else if (roll < 0.58) {
     spawnHerd(dimension, x, surface.location.y, z, BAT, 2);
-  } else if (roll < 0.72) {
-    spawnHerd(dimension, x, surface.location.y, z, BEE, 3);
-  } else if (roll < 0.78) {
+  } else if (roll < 0.66) {
+    spawnHerd(dimension, x, surface.location.y, z, GUARD, 3);
+  } else if (roll < 0.73) {
+    spawnHerd(dimension, x, surface.location.y, z, BOAR, 3);
+  } else if (roll < 0.79) {
     spawnHerd(dimension, x, surface.location.y, z, WISP, 2);
   } else if (roll < 0.84) {
+    spawnHerd(dimension, x, surface.location.y, z, VILLAGER, 2);
+  } else if (roll < 0.88) {
     // The shade is deliberately rarer than the keeper: light should mostly win.
     spawnHerd(dimension, x, surface.location.y, z, SHADE, 1);
-  } else if (roll < 0.95) {
+  } else if (roll < 0.96) {
     spawnEntity(dimension, COPPER_GOLEM, { x: x + 0.5, y: surface.location.y + 1, z: z + 0.5 });
   } else {
     spawnEntity(dimension, CREEPER, { x: x + 0.5, y: surface.location.y + 1, z: z + 0.5 });
