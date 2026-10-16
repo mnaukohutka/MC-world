@@ -69,3 +69,47 @@ metadata/json_schemas/server/block/<ver>/.
   "Loaded client biome but no biome with that name exists" and
   feature_rules/features pointed at those biomes are dead. Reproduce the biomes
   in script instead; delete the biome files and the rules that reference them.
+
+## Round-3: runtime behaviour (fluid, biomes, structures)
+
+- A block's `minecraft:tick` can fire for a cell whose chunk is no longer
+  ticking; every read/write then throws `LocationInUnloadedChunkError`. Treat
+  that as "come back later" and return quietly, not as a warning: the fluid's
+  own tick will fire again when the chunk is live.
+- Custom blocks are not liquids to the physics. `minecraft:liquid_detection`
+  only accepts `"water"` as a `liquid_type` (schema: server/block/*/Liquid
+  Type.json), so a custom fluid cannot be made swimmable by JSON alone. Emulate
+  it in script instead - buoyancy plus a movement assist keyed off
+  `player.inputInfo.getMovementVector()`.
+- A script dimension has no biome for a worldgen feature to match, so
+  `Dimension.placeFeature` refuses and saplings never grow. Always pair the
+  feature with a script fallback that builds the tree block by block.
+- `world.getTopmostBlock` over an unloaded column reports the build ceiling; a
+  structure placed there is rejected with "Invalid structure bounds". Only build
+  from the tile that actually contains the anchor.
+- Structures a script dimension cannot reach via `/place` (vanilla village,
+  ancient city, trial chambers, ...) have to be laid out block by block from a
+  palette; every write must be guarded because a chunk can unload mid-build.
+- Space scatter (one roll per tile) clusters: several features can land within a
+  few blocks. Anchor anything that should be rare to its own larger grid cell
+  (cell_size tiles) and roll once per cell.
+
+## Round-4: copper-first dimension
+
+- Minecraft already ships the whole copper family (cut/chiseled/grate/bulb/bars/
+  chain/lantern/torch/door/trapdoor/chest/statue, at all four oxidation stages).
+  Reuse those ids for builds and leave `pa:` blocks for the shapes vanilla
+  lacks: full copper rock at three stages, soil, grass, leaves, patina, lamp,
+  bricks and the dimension's own ore.
+- The dimension's ore is `pa:copper_ore` / `pa:deepslate_copper_ore`, not the
+  vanilla ids: their loot tables (in `loot_tables/blocks/`) drop raw copper and
+  copper ingots alongside iron, gold and the odd gem, so a vein pays in more
+  than one metal. They are the only ore laid in the caves.
+- The resource pack no longer ships `blocks.json`: every custom block carries its
+  own `minecraft:material_instances`, so a tone entry there is dead weight and
+  the vanilla-id entries ("block ... does not exist in the registry") came from
+  it. Add textures through `terrain_texture.json` and the block JSON instead.
+- `pa:copper_lamp` carries a `pa:lit` state; its permutations swap the texture
+  and `minecraft:light_emission`, and `pa_copper_lamp:trigger` toggles the state
+  on interact. There is no script hook for redstone power on a custom block, so
+  a redstone-driven lamp is not possible — the interact is deliberate.

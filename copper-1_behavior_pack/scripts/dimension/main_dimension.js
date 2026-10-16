@@ -16,7 +16,7 @@ registerDimension({
   "spawn": {"x": 0, "y": 70, "z": 0},
   "build": [],
   "rules": [],
-  "arrival": {"setRespawnHere": false, "fallBelowY": 40, "fallAction": "teleportBack"},
+  "arrival": {"setRespawnHere": false, "fallBelowY": -72, "fallAction": "teleportBack"},
   "portal": {
     "blockId": "pa:dimension_copper_portal",
     "cooldownTicks": 300,

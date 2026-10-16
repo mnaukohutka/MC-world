@@ -27,7 +27,22 @@ initEvent.blockComponentRegistry.registerCustomComponent('pa_fluid_copper:trigge
 onStepOff: e => { e.entity.addEffect("minecraft:hunger", 1400.0, { amplifier: 1 }); },
 });
 
-initEvent.blockComponentRegistry.registerCustomComponent('pa_custom_sapling_copper:trigger', {
+  initEvent.blockComponentRegistry.registerCustomComponent('pa_copper_lamp:trigger', {
+    /*
+     * The lamp carries a `pa:lit` state. There is no script hook that reports
+     * redstone power for a custom block, so the lamp is switched by hand: an
+     * interact toggles it, which is predictable and needs no wiring.
+     */
+    onPlayerInteract: e => {
+      const { block, dimension } = e;
+      const lit = block.permutation.getState("pa:lit");
+      const next = !lit;
+      block.setPermutation(block.permutation.withState("pa:lit", next));
+      dimension.playSound("random.click", block.center(), { pitch: next ? 1.2 : 0.8 });
+    },
+  });
+
+  initEvent.blockComponentRegistry.registerCustomComponent('pa_custom_sapling_copper:trigger', {
     /*
      * Growth rides the block's `minecraft:tick` component. `minecraft:random_ticking`
      * - and with it `onRandomTick` - is gone from the block format, so the modern
@@ -58,16 +73,87 @@ initEvent.blockComponentRegistry.registerCustomComponent('pa_custom_sapling_copp
   },
 });
 
-/** Replaces a sapling with the copper tree feature, if the feature can run. */
+/** Grows a copper tree from a sapling, feature first, script build as fallback. */
 function growSapling(block, dimension) {
   const at = { ...block.location };
+  at.x = Math.floor(at.x);
+  at.y = Math.floor(at.y);
+  at.z = Math.floor(at.z);
+
+  /*
+   * The worldgen feature is tried first so its rules win when they can, but a
+   * script-registered dimension has no biome for the feature to match and the
+   * placement is refused, which is why saplings never grew. A hand-built tree
+   * guarantees growth either way.
+   */
   try {
-    dimension.placeFeature("pa:tree_copper", at, true);
+    if (dimension.placeFeature("pa:tree_copper", at, false)) {
+      block.setType("minecraft:air");
+      return;
+    }
   } catch (error) {
-    // Growth onto an unsupported block throws; leave the sapling standing.
-    return;
+    // Refused for any reason; fall through to the script build.
   }
-  block.setType('minecraft:air');
+
+  buildCopperTree(dimension, at);
+}
+
+/*
+ * A trunk of 5-7 logs with a small canopy and an occasional hanging lantern,
+ * mirroring the pack's `pa:tree_copper` feature closely enough that the two are
+ * hard to tell apart. Only air is overwritten, so an existing build is never
+ * damaged, and a low roof above the sapling refuses the growth rather than
+ * cutting the canopy in half.
+ */
+const TREE_LOG = "pa:copper_wood";
+const TREE_LEAF = "pa:copper_leaves";
+const TREE_CHAIN = "minecraft:copper_chain";
+const TREE_LANTERN = "minecraft:copper_lantern";
+
+function cellAt(dimension, x, y, z) {
+  try {
+    return dimension.getBlock({ x, y, z });
+  } catch (error) {
+    return undefined;
+  }
+}
+
+function buildCopperTree(dimension, at) {
+  const trunk = 5 + Math.floor(Math.random() * 3);
+
+  for (let i = 0; i <= trunk; i++) {
+    const cell = cellAt(dimension, at.x, at.y + i, at.z);
+    if (!cell) return;
+    if (!(cell.isAir || cell.typeId === TREE_LEAF || cell.typeId === "pa:custom_sapling_copper")) return;
+  }
+
+  for (let i = 0; i < trunk; i++) {
+    cellAt(dimension, at.x, at.y + i, at.z)?.setType(TREE_LOG);
+  }
+
+  const canopy = at.y + trunk;
+  for (let dy = -2; dy <= 1; dy++) {
+    const radius = dy <= -1 ? 2 : 1;
+    for (let ox = -radius; ox <= radius; ox++) {
+      for (let oz = -radius; oz <= radius; oz++) {
+        if (ox === 0 && oz === 0 && dy <= 0) continue;
+        const cell = cellAt(dimension, at.x + ox, canopy + dy, at.z + oz);
+        if (cell && cell.isAir) cell.setType(TREE_LEAF);
+      }
+    }
+  }
+  cellAt(dimension, at.x, canopy + 1, at.z)?.setType(TREE_LEAF);
+
+  if (Math.random() >= 0.2) return;
+  const [ox, oz] = [[2, 0], [-2, 0], [0, 2], [0, -2]][Math.floor(Math.random() * 4)];
+  const links = Math.random() < 0.5 ? 1 : 2;
+  for (let i = 0; i < links; i++) {
+    const cell = cellAt(dimension, at.x + ox, canopy - 1 - i, at.z + oz);
+    if (!cell || !cell.isAir) return;
+    cell.setType(TREE_CHAIN);
+  }
+  const socket = cellAt(dimension, at.x + ox, canopy - 1 - links, at.z + oz);
+  if (socket && socket.isAir) socket.setType(TREE_LANTERN);
 }
 
 }, 'system.beforeEvents.startup');

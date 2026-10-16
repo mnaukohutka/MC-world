@@ -1,0 +1,29 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "pa:copper_bricks"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "AA",
+      "AA"
+    ],
+    "key": {
+      "A": {
+        "item": "minecraft:cut_copper"
+      }
+    },
+    "unlock": [
+      {
+        "item": "minecraft:cut_copper"
+      }
+    ],
+    "result": {
+      "item": "pa:copper_bricks",
+      "count": 4
+    }
+  }
+}

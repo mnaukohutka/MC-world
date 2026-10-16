@@ -1,0 +1,29 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "pa:copper_patina"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "pattern": [
+      "AA",
+      "AA"
+    ],
+    "key": {
+      "A": {
+        "item": "minecraft:oxidized_copper"
+      }
+    },
+    "unlock": [
+      {
+        "item": "minecraft:oxidized_copper"
+      }
+    ],
+    "result": {
+      "item": "pa:copper_patina",
+      "count": 4
+    }
+  }
+}

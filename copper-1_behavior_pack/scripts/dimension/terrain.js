@@ -27,30 +27,53 @@ const MIN_GROUND = 8;         // thinnest tile column
 const BOTTOM_MARGIN = 52;     // blocks of solid stone under every column
 const MIN_Y = -64;            // dimension floor
 const MAX_Y = 320;            // dimension ceiling
-const MIN_CAVE_Y = -56;       // deepest level caves are carved at
+const MIN_CAVE_Y = MIN_Y + 4; // deepest level caves are carved at
 
 const STONE = "pa:copper_stone";
+const WEATHERED_STONE = "pa:weathered_copper_stone";
+const OXIDIZED_STONE = "pa:oxidized_copper_stone";
+const SOIL = "pa:copper_soil";
+const PATINA = "pa:copper_patina";
+const BRICKS = "pa:copper_bricks";
+const LAMP_BLOCK = "pa:copper_lamp";
 const GRASS = "pa:copper_grass";
 const LEAVES = "pa:copper_leaves";
 const LOG = "pa:copper_wood";
 const FLUID_A = "pa:fluid_copper";
 const FLUID_B = "pa:fluid_copper_oxidized";
 
+/* The three custom copper stones, ordered fresh -> oxidized like the vanilla
+ * family, so a biome can pick the stage its rock is in. */
+const STONE_STAGES = [STONE, WEATHERED_STONE, OXIDIZED_STONE];
+
+/*
+ * Biomes. Nine, where there were four: the original four plus swamp, mushroom,
+ * badlands and snow, chosen by a temperature/humidity pair the way vanilla does
+ * rather than by the single wetness field. The fields are deliberately low
+ * frequency, so a biome spans a few hundred blocks instead of a few dozen.
+ */
 const PLAIN = "pa:copper_plain";
 const FOREST = "pa:copper_forest";
 const MOUNTAIN = "pa:copper_moutain";
 const OCEAN = "pa:copper_ocean";
+const SWAMP = "pa:copper_swamp";
+const MUSHROOM = "pa:copper_mushroom";
+const BADLANDS = "pa:copper_badlands";
+const SNOW = "pa:copper_snow";
+const BEACH = "pa:copper_beach";
 
 /*
- * Vanilla copper family, used as surface flavour. The four oxidation stages are
- * ordered fresh -> oxidized, so a biome can pick a stage and get a consistent
- * look instead of sprinkling the whole set at random.
+ * Vanilla copper family, used as surface flavour on top of the pack's own
+ * copper rock. The four oxidation stages are ordered fresh -> oxidized, so a
+ * biome can pick a stage and get a consistent look instead of sprinkling the
+ * whole set at random. Only the full-block members are listed: stairs and slabs
+ * need their own shape states and would read as gaps in the ground.
  */
 const COPPER_STAGES = [
-  ["minecraft:copper_block", "minecraft:cut_copper", "minecraft:chiseled_copper", "minecraft:copper_grate", "minecraft:copper_bulb"],
-  ["minecraft:exposed_copper", "minecraft:exposed_cut_copper", "minecraft:exposed_chiseled_copper", "minecraft:exposed_copper_grate", "minecraft:exposed_copper_bulb"],
-  ["minecraft:weathered_copper", "minecraft:weathered_cut_copper", "minecraft:weathered_chiseled_copper", "minecraft:weathered_copper_grate", "minecraft:weathered_copper_bulb"],
-  ["minecraft:oxidized_copper", "minecraft:oxidized_cut_copper", "minecraft:oxidized_chiseled_copper", "minecraft:oxidized_copper_grate", "minecraft:oxidized_copper_bulb"],
+  ["minecraft:copper_block", "minecraft:cut_copper", "minecraft:chiseled_copper", "minecraft:copper_grate"],
+  ["minecraft:exposed_copper", "minecraft:exposed_cut_copper", "minecraft:exposed_chiseled_copper", "minecraft:exposed_copper_grate"],
+  ["minecraft:weathered_copper", "minecraft:weathered_cut_copper", "minecraft:weathered_chiseled_copper", "minecraft:weathered_copper_grate"],
+  ["minecraft:oxidized_copper", "minecraft:oxidized_cut_copper", "minecraft:oxidized_chiseled_copper", "minecraft:oxidized_copper_grate"],
 ];
 
 /** Each biome owns one oxidation stage, which is what makes them read apart. */
@@ -59,14 +82,32 @@ const BIOME_COPPER_STAGE = {
   [FOREST]: 1,
   [MOUNTAIN]: 2,
   [OCEAN]: 3,
+  [SWAMP]: 1,
+  [MUSHROOM]: 3,
+  [BADLANDS]: 2,
+  [SNOW]: 1,
+  [BEACH]: 0,
 };
 
-const ORE = "minecraft:copper_ore";
-const DEEPSLATE_ORE = "minecraft:deepslate_copper_ore";
+/* Raw copper pockets inside the rock, so a cave wall reads as ore-bearing. */
 const RAW_COPPER = "minecraft:raw_copper_block";
+
+/*
+ * The dimension's own ore. It replaces vanilla copper ore rather than sitting
+ * beside it: when mined it yields raw copper plus the metals that historically
+ * travel with copper — iron, gold, and the odd gem — so prospecting the copper
+ * caves pays in more than one metal.
+ */
+const COPPER_ORE = "pa:copper_ore";
+const DEEPSLATE_COPPER_ORE = "pa:deepslate_copper_ore";
 const MOSS = "minecraft:moss_block";
-const GRAVEL = "minecraft:gravel";
 const CLAY = "minecraft:clay";
+const SAND = "minecraft:sand";
+const GRAVEL = "minecraft:gravel";
+const MUD = "minecraft:mud";
+const SNOW_LAYER = "minecraft:snow_layer";
+/* The shaft of a lamp post, and the cover block for small ground clutter. */
+const CONNECTOR = "minecraft:chiseled_copper";
 
 /* Lanterns hang below a chain, so the two ids come in matching pairs. */
 const LANTERNS = [
@@ -103,6 +144,11 @@ function log() {
   return permutation(LOG);
 }
 
+/** The custom copper rock at the biome's oxidation stage. */
+function stoneAt(biome) {
+  return permutation(STONE_STAGES[(BIOME_COPPER_STAGE[biome] ?? 0) % STONE_STAGES.length]);
+}
+
 function fluidA() {
   return permutation(FLUID_A).withState("block:source", true).withState("block:depth", 5);
 }
@@ -123,16 +169,45 @@ function lanternAt(biome, x, z) {
   return { chain: permutation(chain), lantern: permutation(lantern) };
 }
 
-/** Freshly exposed rock pockets inside a column, so caves read as copper veins. */
-function oreAt(x, y, z) {
-  return random2(x * 31 + y, z * 17 - y, 0x0e) < 0.5 ? permutation(ORE) : permutation(DEEPSLATE_ORE);
+/**
+ * Copper ore veins. The dimension's own ore, so a cave wall yields copper and a
+ * companion metal at once. Deepslate ore sits below y=0 where the rock turns
+ * dark, matching how the rest of the world grades.
+ */
+function oreAt(biome, x, y, z) {
+  const roll = random2(x * 31 + y, z * 17 - y, 0x0e);
+  if (roll < 0.35) return permutation(y < 0 ? DEEPSLATE_COPPER_ORE : COPPER_ORE);
+  return stoneAt(biome);
 }
 
+/**
+ * Per-biome surface material. Everything here is copper-first: the pack's own
+ * soil, patina and brick, with the few vanilla materials that read as copper
+ * country (gravel, clay, sand, mud, moss) used sparingly.
+ */
 function soilAt(biome, x, z) {
-  if (biome === OCEAN) return permutation(CLAY);
-  if (biome === MOUNTAIN) return permutation(GRAVEL);
-  if (biome === FOREST) return random2(x, z, 0x50) < 0.6 ? permutation(MOSS) : grass();
-  return grass();
+  switch (biome) {
+    case OCEAN: return permutation(CLAY);
+    case BEACH: return permutation(SAND);
+    case MOUNTAIN: return random2(x, z, 0x54) < 0.5 ? permutation(GRAVEL) : stoneAt(biome);
+    case BADLANDS: return permutation(BRICKS);
+    case SNOW: return permutation(SOIL);
+    case SWAMP: return random2(x, z, 0x53) < 0.5 ? permutation(MUD) : grass();
+    case MUSHROOM: return permutation(PATINA);
+    case FOREST: return random2(x, z, 0x50) < 0.6 ? permutation(MOSS) : grass();
+    default: return grass();
+  }
+}
+
+/** The single block laid at the very top of a column. */
+function topCap(biome, x, z) {
+  switch (biome) {
+    case MOUNTAIN: return random2(x, z, 0x70) < 0.35 ? stoneAt(biome) : grass();
+    case BEACH: return permutation(SAND);
+    case BADLANDS: return permutation(BRICKS);
+    case SNOW: return permutation(SOIL);
+    default: return soilAt(biome, x, z);
+  }
 }
 
 let seed = 0;
@@ -250,38 +325,79 @@ function isCave(x, y, z) {
 
 /** How mountainous the column is, -1..1. */
 function mountainness(x, z) {
-  return fbm(x / 140, z / 140, 2, 0x33);
+  return fbm(x / 240, z / 240, 2, 0x33);
 }
 
 /** How wet the column is, -1..1. Drives forest against plain. */
 function wetness(x, z) {
-  return fbm(x / 90 + 100, z / 90 + 100, 2, 0x77);
+  return fbm(x / 260 + 100, z / 260 + 100, 2, 0x77);
 }
 
-/** Which of the four copper biomes a column belongs to. */
+/** How hot the column is, -1..1. Drives badlands and snow apart. */
+function temperature(x, z) {
+  return fbm(x / 300 + 300, z / 300 + 300, 2, 0x21);
+}
+
+/** How weird the column is, -1..1. Spikes on the mushroom islands. */
+function weirdness(x, z) {
+  return fbm(x / 210 + 700, z / 210 + 700, 2, 0x9d);
+}
+
+/**
+ * Which copper biome a column belongs to.
+ *
+ * Ocean wins wherever the ground is at or below sea level, then a beach ring
+ * sits just above it. On land the temperature/humidity pair picks the biome the
+ * way vanilla's climate parameters do, which is what keeps the extra biomes in
+ * sensible neighbourhoods — snow never touching badlands, swamp hugging forest.
+ */
 function biomeAt(x, z, height) {
   if (mountainness(x, z) > MOUNTAIN_BASE) return MOUNTAIN;
   if (height <= SEA_LEVEL) return OCEAN;
-  if (wetness(x, z) > 0.12) return FOREST;
+  if (height <= SEA_LEVEL + 2) return BEACH;
+
+  const wet = wetness(x, z);
+  const temp = temperature(x, z);
+
+  // A rare high-weirdness pocket becomes mushroom country regardless of climate.
+  if (weirdness(x, z) > 0.62 && wet > 0.2) return MUSHROOM;
+  if (temp < -0.35 && wet > -0.1) return SNOW;
+  if (temp > 0.4 && wet < -0.1) return BADLANDS;
+  if (wet > 0.35 && temp > -0.2) return SWAMP;
+  if (wet > 0.12) return FOREST;
   return PLAIN;
 }
 
 /** Rolling copper hills with real mountains; flatter plateau near the origin. */
 function surfaceHeight(x, z) {
   const nearOrigin = Math.abs(x) <= 24 && Math.abs(z) <= 24;
-  const broad = fbm(x / 96, z / 96, 4, 0x65);
-  const fine = fbm(x / 28, z / 28, 3, 0x65);
+  const broad = fbm(x / 280, z / 280, 4, 0x65);
+  const fine = fbm(x / 60, z / 60, 3, 0x65);
   const ridge = mountainness(x, z);
-  let height = SURFACE_Y + broad * 10 + fine * 3;
-  if (ridge > MOUNTAIN_BASE) height += (ridge - MOUNTAIN_BASE) * 60;
+  let height = SURFACE_Y + broad * 12 + fine * 3;
+  if (ridge > MOUNTAIN_BASE) height += (ridge - MOUNTAIN_BASE) * 70;
+  // Badlands get a little extra relief, so their terraces read as plateaus.
+  if (temperature(x, z) > 0.4 && wetness(x, z) < -0.1) height += fine * 4;
   if (nearOrigin) return Math.max(SURFACE_Y, Math.round(height));
   return Math.round(height);
 }
 
+/** Trees per biome. Swamp is dense and mushroom is spore-laden; snow is sparse. */
+function treeDensity(biome) {
+  switch (biome) {
+    case FOREST: return 0.014;
+    case SWAMP: return 0.018;
+    case PLAIN: return 0.003;
+    case SNOW: return 0.004;
+    case MUSHROOM: return 0.006;
+    default: return 0;
+  }
+}
+
 function isTreeAt(x, z, biome) {
-  if (biome !== FOREST && biome !== PLAIN) return false;
+  const density = treeDensity(biome);
+  if (density === 0) return false;
   if (Math.abs(x) <= 6 && Math.abs(z) <= 6) return false;
-  const density = biome === FOREST ? 0.014 : 0.003;
   return random2(x, z, 0x5ab) < density;
 }
 
@@ -295,22 +411,27 @@ function carveColumn(dimension, x, z, bottom, top) {
     // Every so often a cave wall keeps its copper, so the tunnels are not bare.
     const block = dimension.getBlock({ x, y, z });
     if (!block) continue;
-    block.setPermutation(y < 0 && random3(x, y, z, 0x0f) < 0.35 ? oreAt(x, y, z) : permutation("minecraft:air"));
+    if (y < 0 && random3(x, y, z, 0x0f) < 0.35) {
+      block.setPermutation(oreAt("pa:copper_plain", x, y, z));
+    } else {
+      block.setPermutation(permutation("minecraft:air"));
+    }
   }
 }
 
-/** Turns a solid column into layered stone, ore pockets and a surface cap. */
+/** Turns a solid column into layered rock, raw-copper pockets and a surface cap. */
 function buildColumn(dimension, x, z, top, bottom, biome) {
-  dimension.fillBlocks(new BlockVolume({ x, y: bottom, z }, { x, y: top - 1, z }), stone(), {
+  dimension.fillBlocks(new BlockVolume({ x, y: bottom, z }, { x, y: top - 1, z }), stoneAt(biome), {
     ignoreChunkBoundErrors: true,
   });
 
   carveColumn(dimension, x, z, bottom, top);
 
   /*
-   * A shallow gravel/clay band under the surface gives each biome a distinct
-   * cross-section, and scattered copper-family blocks at and just under the
-   * surface are what make a walk through the world look like copper country.
+   * A shallow band of copper soil and raw copper under the surface gives each
+   * biome a distinct cross-section; scattered copper-family blocks at and just
+   * under the surface are what make a walk through the world look like copper
+   * country.
    */
   for (let y = top - 4; y < top; y++) {
     const block = dimension.getBlock({ x, y, z });
@@ -318,19 +439,16 @@ function buildColumn(dimension, x, z, top, bottom, biome) {
     if (random2(x * 7 + y, z * 13 - y, 0x44) < 0.35) block.setPermutation(soilAt(biome, x, z));
   }
 
-  for (let y = top - 3; y <= top; y++) {
+  for (let y = top - 6; y <= top - 1; y++) {
     const block = dimension.getBlock({ x, y, z });
     if (!block || block.isAir) continue;
-    if (random2(x * 3 + y, z * 5 - y, 0x33) < 0.16) block.setPermutation(copperAt(biome, x, z));
+    const roll = random2(x * 3 + y, z * 5 - y, 0x33);
+    if (roll < 0.08) block.setPermutation(oreAt(biome, x, y, z));
+    else if (roll < 0.16) block.setPermutation(permutation(RAW_COPPER));
+    else if (roll < 0.30) block.setPermutation(copperAt(biome, x, z));
   }
 
   dimension.getBlock({ x, y: top, z })?.setPermutation(biome === OCEAN ? soilAt(biome, x, z) : topCap(biome, x, z));
-}
-
-function topCap(biome, x, z) {
-  if (biome === MOUNTAIN) return random2(x, z, 0x70) < 0.3 ? stone() : grass();
-  if (biome === FOREST) return soilAt(biome, x, z);
-  return grass();
 }
 
 /** Fills one 16x16 tile of ground, then decorates it per biome. */
@@ -371,6 +489,65 @@ function buildTile(dimension, tileX, tileZ) {
       placeTree(dimension, x, columnTops[index], z, columnBiome[index]);
     }
   }
+
+  // Small ground cover last, so nothing overgrows it: mushrooms on mycelium,
+  // cacti on the badlands floor, snow caps on the cold biome.
+  for (let dx = 1; dx < TILE - 1; dx++) {
+    for (let dz = 1; dz < TILE - 1; dz++) {
+      const index = dx * TILE + dz;
+      decorateColumn(dimension, baseX + dx, columnTops[index], baseZ + dz, columnBiome[index]);
+    }
+  }
+}
+
+/*
+ * Ground cover per biome. Everything is written only into air, so a decoration
+ * can never replace the terrain it stands on, and each is rare enough not to
+ * carpet the biome. The flavour is copper: lamp posts on their own copper rock,
+ * patina and raw-copper clusters, and a copper grate skylight where a cave
+ * mouth would be.
+ */
+function decorateColumn(dimension, x, top, z, biome) {
+  const ground = dimension.getBlock({ x, y: top, z });
+  if (!ground || ground.isAir || ground.isLiquid) return;
+
+  const roll = random2(x * 11, z * 17, 0x8a);
+
+  if (biome === MUSHROOM) {
+    if (roll < 0.03) placeLampPost(dimension, x, top, z);
+    return;
+  }
+  if (biome === BADLANDS) {
+    if (roll < 0.02) placeLampPost(dimension, x, top, z);
+    else if (roll < 0.05) setCover(dimension, x, top, z, PATINA);
+    return;
+  }
+  if (biome === SNOW) {
+    setCover(dimension, x, top, z, SNOW_LAYER);
+    return;
+  }
+  if (biome === PLAIN || biome === FOREST) {
+    if (roll < 0.008) placeLampPost(dimension, x, top, z);
+    else if (roll < 0.03) setCover(dimension, x, top, z, PATINA);
+  }
+}
+
+/** Puts a single block of cover on top of the column, if the space is free. */
+function setCover(dimension, x, top, z, blockId) {
+  const above = dimension.getBlock({ x, y: top + 1, z });
+  if (above && above.isAir) above.setType(blockId);
+}
+
+/** A copper post: a copper-wood shaft, capped by a lamp that lights the way. */
+function placeLampPost(dimension, x, top, z) {
+  const height = 2 + Math.floor(random2(x, z, 0x9f) * 2);
+  for (let i = 1; i <= height; i++) {
+    const block = dimension.getBlock({ x, y: top + i, z });
+    if (!block || !block.isAir) return;
+    block.setType(CONNECTOR);
+  }
+  const cap = dimension.getBlock({ x, y: top + height + 1, z });
+  if (cap && cap.isAir) cap.setType(LAMP_BLOCK);
 }
 
 /** Ocean: both fluids, laid down as sources up to sea level. */
@@ -385,10 +562,12 @@ function fillSeas(dimension, x, z, floorY) {
 
 /** Occasional surface pools of the fluid on land, so both occur inland too. */
 function scatterPool(dimension, x, z, top, biome) {
-  if (biome === MOUNTAIN) return;
+  if (biome === MOUNTAIN || biome === BADLANDS || biome === SNOW) return;
+  // Swamp and mushroom country are wettest, so pools are commoner there.
+  const wetBand = (biome === SWAMP || biome === MUSHROOM) ? 0.5 : 0.55;
   const pool = fbm(x / 22 + 500, z / 22 + 500, 2, 0xa5);
-  if (pool < 0.55 || pool > 0.72) return;
-  dimension.getBlock({ x, y: top, z })?.setPermutation(pool > 0.635 ? fluidB() : fluidA());
+  if (pool < wetBand || pool > wetBand + 0.17) return;
+  dimension.getBlock({ x, y: top, z })?.setPermutation(pool > wetBand + 0.085 ? fluidB() : fluidA());
 }
 
 function placeTree(dimension, x, groundY, z, biome) {
@@ -532,9 +711,10 @@ export function startTerrainLoop(dimensionId) {
     for (const player of world.getPlayers()) {
       if (player.dimension.id !== dimensionId) continue;
       queueTerrainAround(player, dimensionId);
-      // The ocean floor can sit well below the average surface, so only lift a
-      // player who has fallen past the dimension floor itself.
-      if (player.location.y < MIN_Y + 8) {
+      // The ocean floor can sit well below the average surface, and exploration
+      // can take a player deep into the copper caves, so the lift only fires
+      // once they are past the dimension floor — never mid-exploration.
+      if (player.location.y < MIN_Y + 1) {
         player.teleport({ x: player.location.x, y: SURFACE_Y + 2, z: player.location.z }, { dimension: player.dimension });
         player.sendMessage("§eThe dimension was still forming — you were lifted back up.");
       }

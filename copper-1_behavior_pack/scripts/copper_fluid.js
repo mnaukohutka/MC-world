@@ -96,9 +96,16 @@ function flow(block, dimension) {
 }
 
 export function tickFluid(event) {
+  const block = event.block;
+  // A tick can arrive for a block whose chunk has since stopped ticking; every
+  // read and write below would throw, and the fluid simply waits for its next
+  // tick once the chunk is live again.
+  if (!block || !block.isValid) return;
   try {
-    flow(event.block, event.dimension);
+    flow(block, event.dimension);
   } catch (error) {
+    const message = String(error);
+    if (message.includes("LocationInUnloadedChunkError") || message.includes("not in a chunk currently loaded")) return;
     console.warn(`[copper] fluid tick failed: ${error}`);
   }
 }

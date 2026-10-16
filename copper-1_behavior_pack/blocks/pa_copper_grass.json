@@ -1,27 +1,35 @@
 {
-    "format_version": "1.21.80",
-    "minecraft:block": {
-        "description": {
-            "identifier": "pa:copper_grass",
-            "menu_category": {
-                "category": "nature"
-            }
+  "format_version": "1.21.90",
+  "minecraft:block": {
+    "description": {
+      "identifier": "pa:copper_grass",
+      "menu_category": {
+        "category": "nature"
+      }
+    },
+    "components": {
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.6
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 3
+      },
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "pa_copper_grass_side",
+          "render_method": "opaque"
         },
-        "components": {
-            "minecraft:destructible_by_mining": {
-                "seconds_to_destroy": 0.6
-            },
-            "minecraft:destructible_by_explosion": {
-                "explosion_resistance": 3
-            },
-            "minecraft:geometry": "minecraft:geometry.full_block",
-            "minecraft:material_instances": {
-                "*": {
-                    "texture": "copper_grate",
-                    "render_method": "opaque"
-                }
-            },
-            "minecraft:map_color": "#7EA36B"
+        "up": {
+          "texture": "pa_copper_grass_top",
+          "render_method": "opaque"
+        },
+        "down": {
+          "texture": "pa_copper_grass_bottom",
+          "render_method": "opaque"
         }
+      },
+      "minecraft:map_color": "#5E9C6C"
     }
+  }
 }
