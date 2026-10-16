@@ -93,3 +93,23 @@ metadata/json_schemas/server/block/<ver>/.
 - Space scatter (one roll per tile) clusters: several features can land within a
   few blocks. Anchor anything that should be rare to its own larger grid cell
   (cell_size tiles) and roll once per cell.
+
+## Round-4: copper-first dimension
+
+- Minecraft already ships the whole copper family (cut/chiseled/grate/bulb/bars/
+  chain/lantern/torch/door/trapdoor/chest/statue, at all four oxidation stages).
+  Reuse those ids for builds and leave `pa:` blocks for the shapes vanilla
+  lacks: full copper rock at three stages, soil, grass, leaves, patina, lamp,
+  bricks and the dimension's own ore.
+- The dimension's ore is `pa:copper_ore` / `pa:deepslate_copper_ore`, not the
+  vanilla ids: their loot tables (in `loot_tables/blocks/`) drop raw copper and
+  copper ingots alongside iron, gold and the odd gem, so a vein pays in more
+  than one metal. They are the only ore laid in the caves.
+- The resource pack no longer ships `blocks.json`: every custom block carries its
+  own `minecraft:material_instances`, so a tone entry there is dead weight and
+  the vanilla-id entries ("block ... does not exist in the registry") came from
+  it. Add textures through `terrain_texture.json` and the block JSON instead.
+- `pa:copper_lamp` carries a `pa:lit` state; its permutations swap the texture
+  and `minecraft:light_emission`, and `pa_copper_lamp:trigger` toggles the state
+  on interact. There is no script hook for redstone power on a custom block, so
+  a redstone-driven lamp is not possible — the interact is deliberate.

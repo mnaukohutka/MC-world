@@ -27,7 +27,22 @@ initEvent.blockComponentRegistry.registerCustomComponent('pa_fluid_copper:trigge
 onStepOff: e => { e.entity.addEffect("minecraft:hunger", 1400.0, { amplifier: 1 }); },
 });
 
-initEvent.blockComponentRegistry.registerCustomComponent('pa_custom_sapling_copper:trigger', {
+  initEvent.blockComponentRegistry.registerCustomComponent('pa_copper_lamp:trigger', {
+    /*
+     * The lamp carries a `pa:lit` state. There is no script hook that reports
+     * redstone power for a custom block, so the lamp is switched by hand: an
+     * interact toggles it, which is predictable and needs no wiring.
+     */
+    onPlayerInteract: e => {
+      const { block, dimension } = e;
+      const lit = block.permutation.getState("pa:lit");
+      const next = !lit;
+      block.setPermutation(block.permutation.withState("pa:lit", next));
+      dimension.playSound("random.click", block.center(), { pitch: next ? 1.2 : 0.8 });
+    },
+  });
+
+  initEvent.blockComponentRegistry.registerCustomComponent('pa_custom_sapling_copper:trigger', {
     /*
      * Growth rides the block's `minecraft:tick` component. `minecraft:random_ticking`
      * - and with it `onRandomTick` - is gone from the block format, so the modern

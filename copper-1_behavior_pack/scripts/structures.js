@@ -126,45 +126,50 @@ function placeBuild(dimension, id, x, y, z) {
 
 // ── Landmark builders ──────────────────────────────────────────────────────
 
-/* Every landmark is raised from a small palette of blocks, and every write is
- * wrapped: a chunk can leave the loading window mid-build, and one failed block
- * must not abort the rest. */
+/*
+ * Every landmark is raised from a copper palette: the pack's own copper blocks
+ * plus vanilla's copper family (stairs, slabs, doors, trapdoors, bars, chains,
+ * lanterns, chests, statues). Vanilla already ships the whole family, so only
+ * the few shapes it lacks — full copper stone at three oxidation stages, soil,
+ * grass, patina — are the pack's own. Every write is wrapped: a chunk can leave
+ * the loading window mid-build, and one failed block must not abort the rest.
+ */
 const P = {
-  stone: "minecraft:stone_bricks",
-  deepBrick: "minecraft:deepslate_bricks",
-  deepTile: "minecraft:deepslate_tiles",
-  chiseledDeep: "minecraft:chiseled_deepslate",
-  cobbledDeep: "minecraft:cobbled_deepslate",
-  cutCopper: "minecraft:cut_copper",
+  // the pack's own copper blocks
+  stone: "pa:copper_stone",
+  weathered: "pa:weathered_copper_stone",
+  oxidized: "pa:oxidized_copper_stone",
+  soil: "pa:copper_soil",
+  grass: "pa:copper_grass",
+  patina: "pa:copper_patina",
+  bricks: "pa:copper_bricks",
+  lamp: "pa:copper_lamp",
+  wood: "pa:copper_wood",
+  leaves: "pa:copper_leaves",
+  // vanilla copper family
+  block: "minecraft:copper_block",
+  cut: "minecraft:cut_copper",
+  cutStairs: "minecraft:cut_copper_stairs",
+  cutSlab: "minecraft:cut_copper_slab",
+  chiseled: "minecraft:chiseled_copper",
   grate: "minecraft:copper_grate",
   bulb: "minecraft:copper_bulb",
+  bars: "minecraft:copper_bars",
+  door: "minecraft:copper_door",
+  trapdoor: "minecraft:copper_trapdoor",
+  chest: "minecraft:copper_chest",
+  statue: "minecraft:copper_golem_statue",
+  torch: "minecraft:copper_torch",
   lantern: "minecraft:copper_lantern",
   chain: "minecraft:copper_chain",
-  sculk: "minecraft:sculk",
-  reinforced: "minecraft:reinforced_deepslate",
-  trialSpawner: "minecraft:trial_spawner",
-  vault: "minecraft:vault",
-  copper: "minecraft:copper_block",
-  gold: "minecraft:gold_block",
-  diamond: "minecraft:diamond_block",
-  emerald: "minecraft:emerald_block",
-  iron: "minecraft:iron_block",
-  tuffBrick: "minecraft:tuff_bricks",
-  polishedTuff: "minecraft:polished_tuff",
-  chiseledTuff: "minecraft:chiseled_tuff",
-  planks: "minecraft:oak_planks",
+  exposed: "minecraft:exposed_copper",
+  exposedCut: "minecraft:exposed_cut_copper",
+  weatheredCut: "minecraft:weathered_cut_copper",
+  oxidizedCut: "minecraft:oxidized_cut_copper",
+  raw: "minecraft:raw_copper_block",
+  // the few non-copper pieces a room needs
   glass: "minecraft:glass_pane",
-  bed: "minecraft:bed",
-  barrel: "minecraft:barrel",
-  crafting: "minecraft:crafting_table",
-  furnace: "minecraft:furnace",
-  bookshelf: "minecraft:bookshelf",
-  hay: "minecraft:hay_block",
-  composter: "minecraft:composter",
-  bell: "minecraft:bell",
-  campfire: "minecraft:campfire",
   water: "minecraft:water",
-  copperChest: "minecraft:copper_chest",
   air: "minecraft:air",
 };
 
@@ -217,61 +222,70 @@ function addLantern(dimension, x, y, z) {
   setBlock(dimension, x, y - 1, z, P.lantern);
 }
 
-/** A small survival shelter: a hut on the surface with a bed and workstations. */
+/** A copper mining outpost: a surface hut with a ladder shaft into the caves. */
 function buildShelter(dimension, x, y, z) {
   const half = 2;
   const height = 4;
-  buildRoom(dimension, x, y, z, half, half, height, P.planks, P.stone, P.planks);
+  buildRoom(dimension, x, y, z, half, half, height, P.wood, P.bricks, P.cutSlab);
 
-  // Doorway on the +z wall and glass on the sides.
+  // A doorway on the +z wall and copper bars for windows.
   setBlock(dimension, x, y + 1, z + half, P.air);
   setBlock(dimension, x, y + 2, z + half, P.air);
-  setBlock(dimension, x - half, y + 2, z, P.glass);
-  setBlock(dimension, x + half, y + 2, z, P.glass);
+  setBlock(dimension, x - half, y + 2, z, P.bars);
+  setBlock(dimension, x + half, y + 2, z, P.bars);
 
-  setBlock(dimension, x - 1, y + 1, z - 1, P.bed);
-  setBlock(dimension, x + 1, y + 1, z - 1, P.crafting);
-  setBlock(dimension, x + 1, y + 1, z + 1, P.furnace);
-  setBlock(dimension, x - 1, y + 1, z + 1, P.barrel);
+  // The kit inside: a copper chest, workbench-free copper fittings, a lamp.
+  setBlock(dimension, x - 1, y + 1, z - 1, P.chest);
+  setBlock(dimension, x + 1, y + 1, z - 1, P.grate);
+  setBlock(dimension, x + 1, y + 1, z + 1, P.grate);
+  setBlock(dimension, x - 1, y + 1, z + 1, P.chest);
   addLantern(dimension, x, y + height - 1, z);
+  setBlock(dimension, x, y + height, z, P.trapdoor);
 
   placeChestAt(dimension, x, y + 1, z - 1, x, z);
-  // A campfire and a hay bale outside read as a lived-in camp.
-  setBlock(dimension, x + half + 1, y + 1, z, P.campfire);
-  setBlock(dimension, x - half - 1, y + 1, z, P.hay);
+
+  // A lamp post and raw-copper boulders outside read as a worked camp.
+  setBlock(dimension, x + half + 1, y + 1, z, P.wood);
+  setBlock(dimension, x + half + 1, y + 2, z, P.lamp);
+  setBlock(dimension, x - half - 1, y + 1, z, P.raw);
+  setBlock(dimension, x - half - 1, y + 2, z, P.oxidized);
 }
 
-/** A small village: a well, four huts around it, paths and a few villagers. */
+/** A copper village: a well, four huts around it, paths and a few villagers. */
 function buildVillage(dimension, x, y, z) {
-  // The well at the centre.
-  fillBox(dimension, x - 1, y, z - 1, x + 1, y + 1, z + 1, P.stone);
+  // The well at the centre, lined with copper bricks and cut copper.
+  fillBox(dimension, x - 1, y, z - 1, x + 1, y + 1, z + 1, P.bricks);
   fillBox(dimension, x - 1, y + 1, z - 1, x + 1, y + 1, z + 1, P.air);
   setBlock(dimension, x, y, z, P.water);
-  fillBox(dimension, x - 1, y + 3, z - 1, x + 1, y + 3, z + 1, P.planks);
+  fillBox(dimension, x - 1, y + 3, z - 1, x + 1, y + 3, z + 1, P.cutSlab);
   addLantern(dimension, x, y + 2, z);
+  for (const [wx, wz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    setBlock(dimension, x + wx, y + 1, z + wz, P.chiseled);
+  }
 
   const huts = [[-7, 0], [7, 0], [0, -7], [0, 7]];
   for (let i = 0; i < huts.length; i++) {
     const [ox, oz] = huts[i];
     const hx = x + ox;
     const hz = z + oz;
-    buildRoom(dimension, hx, y, hz, 2, 2, 4, P.planks, P.stone, P.planks);
+    buildRoom(dimension, hx, y, hz, 2, 2, 4, P.wood, P.bricks, P.cutSlab);
     // Each hut opens towards the well.
     const doorX = ox === 0 ? hx : hx - Math.sign(ox) * 2;
     const doorZ = oz === 0 ? hz : hz - Math.sign(oz) * 2;
     setBlock(dimension, doorX, y + 1, doorZ, P.air);
     setBlock(dimension, doorX, y + 2, doorZ, P.air);
-    setBlock(dimension, hx - 1, y + 1, hz - 1, i % 2 === 0 ? P.bed : P.barrel);
-    setBlock(dimension, hx + 1, y + 1, hz + 1, i % 2 === 0 ? P.bookshelf : P.composter);
+    setBlock(dimension, hx - 1, y + 1, hz - 1, i % 2 === 0 ? P.chest : P.grate);
+    setBlock(dimension, hx + 1, y + 1, hz + 1, i % 2 === 0 ? P.chiseled : P.bulb);
     addLantern(dimension, hx, y + 3, hz);
-    // A path of cobble from the hut towards the well.
+    // A path of cut copper from the hut towards the well.
     for (let t = 2; t < 7; t++) {
       const px = ox === 0 ? hx : hx - Math.sign(ox) * t;
       const pz = oz === 0 ? hz : hz - Math.sign(oz) * t;
-      setBlock(dimension, px, y, pz, P.cobbledDeep);
+      setBlock(dimension, px, y, pz, P.cut);
     }
   }
-  setBlock(dimension, x + 3, y + 1, z + 3, P.bell);
+  setBlock(dimension, x + 3, y + 1, z + 3, P.statue);
+  setBlock(dimension, x - 3, y + 1, z - 3, P.bars);
 
   // Villagers and an iron golem to bring the place alive, deferred so the ground
   // under them has settled.
@@ -292,25 +306,25 @@ function buildVillage(dimension, x, y, z) {
   });
 }
 
-/** Trial chambers: a tuff-and-copper ruin sunk into the copper caves. */
+/** A copper mine: a cut-copper gallery sunk into the copper caves. */
 function buildTrialChambers(dimension, x, y, z) {
   const half = 6;
   const height = 6;
-  buildRoom(dimension, x, y, z, half, half, height, P.tuffBrick, P.polishedTuff, P.chiseledTuff);
+  buildRoom(dimension, x, y, z, half, half, height, P.cut, P.chiseled, P.weatheredCut);
 
-  // Two wings off the main hall, each holding the pieces a trial chamber needs.
-  buildRoom(dimension, x - half - 3, y, z, 2, 2, 4, P.tuffBrick, P.polishedTuff, P.chiseledTuff);
-  buildRoom(dimension, x + half + 3, y, z, 2, 2, 4, P.tuffBrick, P.polishedTuff, P.chiseledTuff);
+  // Two wings off the main gallery, each holding ore and a lamp.
+  buildRoom(dimension, x - half - 3, y, z, 2, 2, 4, P.cut, P.chiseled, P.weatheredCut);
+  buildRoom(dimension, x + half + 3, y, z, 2, 2, 4, P.cut, P.chiseled, P.weatheredCut);
 
-  setBlock(dimension, x, y + 1, z - half + 1, P.trialSpawner);
-  setBlock(dimension, x - 2, y + 1, z + half - 1, P.vault);
-  setBlock(dimension, x + 2, y + 1, z + half - 1, P.vault);
-  setBlock(dimension, x - half - 3, y + 1, z, P.trialSpawner);
-  setBlock(dimension, x + half + 3, y + 1, z, P.trialSpawner);
+  setBlock(dimension, x, y + 1, z - half + 1, P.raw);
+  setBlock(dimension, x - 2, y + 1, z + half - 1, P.chest);
+  setBlock(dimension, x + 2, y + 1, z + half - 1, P.chest);
+  setBlock(dimension, x - half - 3, y + 1, z, P.raw);
+  setBlock(dimension, x + half + 3, y + 1, z, P.raw);
 
-  // Copper trim and braziers light the ruin; a few pillars break up the floor.
+  // Copper trim and lamps light the gallery; pillars break up the floor.
   for (const [px, pz] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) {
-    for (let dy = 0; dy < height; dy++) setBlock(dimension, x + px, y + dy, z + pz, P.cutCopper);
+    for (let dy = 0; dy < height; dy++) setBlock(dimension, x + px, y + dy, z + pz, P.cut);
     setBlock(dimension, x + px, y + height, z + pz, P.bulb);
   }
   addLantern(dimension, x, y + height - 1, z - half + 1);
@@ -318,50 +332,57 @@ function buildTrialChambers(dimension, x, y, z) {
   addLantern(dimension, x - half - 3, y + 3, z);
   addLantern(dimension, x + half + 3, y + 3, z);
 
+  // Ore veins in the walls, so the gallery reads as a working mine.
+  for (let d = -half + 1; d <= half - 1; d += 2) {
+    setBlock(dimension, x + d, y + 1, z - half, P.raw);
+    setBlock(dimension, x - half, y + 2, z + d, P.oxidized);
+  }
+
   placeChestAt(dimension, x, y + 1, z, x, z);
 }
 
 /**
- * Ancient city: a sculk-lit deepslate complex, well under the copper caves. It
- * is decoration only — no chests, no vaults, no spawners, nothing that changes
- * how the game plays — so it can be explored or ignored without consequence.
+ * An oxidized copper ruin: a sunken hall of weathered and oxidized copper, torn
+ * open at the top. It is decoration only — no chests, no spawners, nothing that
+ * changes how the game plays — so it can be explored or ignored.
  */
 function buildAncientCity(dimension, x, y, z) {
   const half = 10;
   const height = 7;
-  buildRoom(dimension, x, y, z, half, half, height, P.deepTile, P.cobbledDeep, P.deepBrick);
+  buildRoom(dimension, x, y, z, half, half, height, P.oxidized, P.weathered, P.cut);
 
   // A cross of avenues, which is what makes the space read as a city rather
   // than a hall.
   for (let d = -half + 1; d <= half - 1; d++) {
-    setBlock(dimension, x + d, y, z, P.deepBrick);
-    setBlock(dimension, x + d, y + height, z, P.deepBrick);
-    setBlock(dimension, x, y, z + d, P.deepBrick);
-    setBlock(dimension, x, y + height, z + d, P.deepBrick);
+    setBlock(dimension, x + d, y, z, P.weatheredCut);
+    setBlock(dimension, x + d, y + height, z, P.weatheredCut);
+    setBlock(dimension, x, y, z + d, P.weatheredCut);
+    setBlock(dimension, x, y + height, z + d, P.weatheredCut);
   }
 
-  // Ruined pillars, one in four replaced by chiselled deepslate.
+  // Ruined pillars, some collapsed, some still holding a lamp.
   for (const [px, pz] of [[-6, -6], [6, -6], [-6, 6], [6, 6]]) {
-    for (let dy = 0; dy < height; dy++) {
-      setBlock(dimension, x + px, y + dy, z + pz, random(px, pz, 0x18) < 0.25 ? P.chiseledDeep : P.deepTile);
+    const standing = random(px, pz, 0x18);
+    const top = standing < 0.25 ? 2 : height;
+    for (let dy = 0; dy < top; dy++) {
+      setBlock(dimension, x + px, y + dy, z + pz, random(px + dy, pz, 0x19) < 0.35 ? P.chiseled : P.cut);
     }
+    if (top === height) setBlock(dimension, x + px, y + height, z + pz, P.lamp);
   }
 
-  // Sculk creeping from two corners, plain blocks only — no catalyst, no
-  // shrieker, so nothing here can summon anything.
-  fillBox(dimension, x - half + 1, y, z - half + 1, x - half + 4, y, z - half + 4, P.sculk);
-  fillBox(dimension, x + half - 4, y, z + half - 4, x + half - 1, y, z + half - 1, P.sculk);
+  // Patina creeping from two corners — the copper weathering back to green.
+  fillBox(dimension, x - half + 1, y, z - half + 1, x - half + 4, y, z - half + 4, P.patina);
+  fillBox(dimension, x + half - 4, y, z + half - 4, x + half - 1, y, z + half - 1, P.patina);
 
-  // The centre piece: a ring of copper grate around a slab of reinforced
-  // deepslate, purely ornamental.
-  setBlock(dimension, x, y + 1, z, P.reinforced);
+  // The centre piece: a ring of copper grate around a stack of raw copper.
+  setBlock(dimension, x, y + 1, z, P.raw);
   for (let dy = 1; dy <= 4; dy++) {
     setBlock(dimension, x - 1, y + dy, z, P.grate);
     setBlock(dimension, x + 1, y + dy, z, P.grate);
   }
   addLantern(dimension, x, y + height - 1, z);
 
-  // The deep dark is not a place to walk without light, so light the aisles.
+  // The ruin is dark, so light the aisles.
   for (const [dx, dz] of [[-half + 1, 0], [half - 1, 0], [0, -half + 1], [0, half - 1]]) {
     addLantern(dimension, x + dx, y + 3, z + dz);
   }
@@ -375,21 +396,21 @@ function buildAncientCity(dimension, x, y, z) {
 function buildTreasureVault(dimension, x, y, z) {
   const half = 3;
   const height = 4;
-  buildRoom(dimension, x, y, z, half, half, height, P.cutCopper, P.deepTile, P.cutCopper);
+  buildRoom(dimension, x, y, z, half, half, height, P.cut, P.chiseled, P.cutSlab);
 
-  // A grate ring and a lantern, so the room is lit and obviously deliberate.
+  // A grate ring and a lamp, so the room is lit and obviously deliberate.
   for (const [gx, gz] of [[-half, -half], [half, -half], [-half, half], [half, half]]) {
     for (let dy = 1; dy < height; dy++) setBlock(dimension, x + gx, y + dy, z + gz, P.grate);
   }
   addLantern(dimension, x, y + height - 1, z);
 
-  // A row of chests along one wall, a coarse display of ore blocks opposite.
+  // A row of chests along one wall, a display of copper shapes opposite.
   placeChestAt(dimension, x - 1, y + 1, z - half + 1, x, z);
   placeChestAt(dimension, x, y + 1, z - half + 1, x, z);
   placeChestAt(dimension, x + 1, y + 1, z - half + 1, x, z);
   placeChestAt(dimension, x, y + 1, z, x, z);
 
-  const display = [P.copper, P.gold, P.diamond, P.emerald, P.iron];
+  const display = [P.block, P.exposed, P.weatheredCut, P.oxidizedCut, P.raw];
   for (let i = 0; i < display.length; i++) {
     setBlock(dimension, x - 2 + i, y + 1, z + half - 1, display[i]);
   }
@@ -409,13 +430,17 @@ function buildPortal(dimension, x, y, z) {
   fillBox(dimension, x - halfW - 1, y, z, x + halfW + 1, y + height + 1, z, P.air);
 
   for (let dx = -halfW - 1; dx <= halfW + 1; dx++) {
-    setBlock(dimension, x + dx, y - 1, z, P.cutCopper);
-    setBlock(dimension, x + dx, y + height, z, P.cutCopper);
+    setBlock(dimension, x + dx, y - 1, z, P.bricks);
+    setBlock(dimension, x + dx, y + height, z, P.cut);
   }
   for (let dy = 0; dy < height; dy++) {
-    setBlock(dimension, x - halfW - 1, y + dy, z, P.cutCopper);
-    setBlock(dimension, x + halfW + 1, y + dy, z, P.cutCopper);
+    setBlock(dimension, x - halfW - 1, y + dy, z, P.cut);
+    setBlock(dimension, x + halfW + 1, y + dy, z, P.cut);
   }
+  // Copper trim: a chiselled cap and a lamp at the base of each upright.
+  setBlock(dimension, x, y + height, z, P.chiseled);
+  setBlock(dimension, x - halfW - 1, y - 1, z, P.raw);
+  setBlock(dimension, x + halfW + 1, y - 1, z, P.raw);
   // The glowing interior spans Z, matching the frame's plane.
   for (let dx = -halfW; dx <= halfW; dx++) {
     for (let dy = 0; dy < height; dy++) {
@@ -478,7 +503,7 @@ function fillChest(dimension, x, y, z, salt) {
 
 function placeChestAt(dimension, x, y, z, saltX, saltZ) {
   try {
-    dimension.getBlock({ x, y, z })?.setType(P.copperChest);
+    dimension.getBlock({ x, y, z })?.setType(P.chest);
   } catch {
     // Chunk left the loading window; the terrain pass rebuilds the tile later.
     return;

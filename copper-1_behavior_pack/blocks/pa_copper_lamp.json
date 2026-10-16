@@ -1,0 +1,48 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:block": {
+    "description": {
+      "identifier": "pa:copper_lamp",
+      "menu_category": {
+        "category": "nature"
+      },
+      "states": {
+        "pa:lit": [
+          false,
+          true
+        ]
+      }
+    },
+    "components": {
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 1.0
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 6
+      },
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "pa_copper_lamp_off",
+          "render_method": "opaque"
+        }
+      },
+      "minecraft:map_color": "#FFD68C",
+      "pa:copper_lamp:trigger": {}
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('pa:lit')",
+        "components": {
+          "minecraft:light_emission": 14,
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "pa_copper_lamp_on",
+              "render_method": "opaque"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

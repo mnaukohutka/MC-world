@@ -1,0 +1,28 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:block": {
+    "description": {
+      "identifier": "pa:copper_ore",
+      "menu_category": {
+        "category": "nature"
+      }
+    },
+    "components": {
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 3
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 3
+      },
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "pa_copper_ore",
+          "render_method": "opaque"
+        }
+      },
+      "minecraft:map_color": "#B87333",
+      "minecraft:loot": "loot_tables/blocks/pa_copper_ore.json"
+    }
+  }
+}

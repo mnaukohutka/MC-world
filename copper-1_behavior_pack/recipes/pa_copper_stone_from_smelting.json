@@ -1,0 +1,13 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_furnace": {
+    "description": {
+      "identifier": "pa:copper_stone_from_smelting"
+    },
+    "tags": [
+      "furnace"
+    ],
+    "input": "pa:copper_soil",
+    "output": "pa:copper_stone"
+  }
+}
