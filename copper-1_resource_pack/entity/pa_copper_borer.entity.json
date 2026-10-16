@@ -14,11 +14,12 @@
       },
       "scripts": {
         "animate": [
-          "move"
+          "move_controller"
         ]
       },
       "animations": {
-        "move": "controller.animation.silverfish.move"
+        "move": "animation.silverfish.move",
+        "move_controller": "controller.animation.silverfish.move"
       },
       "render_controllers": [
         "controller.render.default"

@@ -1,0 +1,33 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.pa_jelly.move": {
+      "anim_time_update": "query.modified_distance_moved",
+      "loop": true,
+      "bones": {
+        "body": { "position": [ 0.0, 7.5, 1.8 ] },
+        "tentacle1": { "rotation": [ "math.cos(query.anim_time * 180.0) * 20.0 - this", "90.0 - this", 0.0 ] },
+        "tentacle2": { "rotation": [ "math.cos(query.anim_time * 180.0) * 20.0 - this", "45.0 - this", 0.0 ] },
+        "tentacle3": { "rotation": [ "math.cos(query.anim_time * 180.0) * 20.0 - this", "0.0 - this", 0.0 ] },
+        "tentacle4": { "rotation": [ "math.cos(query.anim_time * 180.0) * 20.0 - this", "-45.0 - this", 0.0 ] },
+        "tentacle5": { "rotation": [ "math.cos(query.anim_time * 180.0) * 20.0 - this", "-90.0 - this", 0.0 ] },
+        "tentacle6": { "rotation": [ "math.cos(query.anim_time * 180.0) * 20.0 - this", "-135.0 - this", 0.0 ] },
+        "tentacle7": { "rotation": [ "math.cos(query.anim_time * 180.0) * 20.0 - this", "-180.0 - this", 0.0 ] },
+        "tentacle8": { "rotation": [ "math.cos(query.anim_time * 180.0) * 20.0 - this", "-225.0 - this", 0.0 ] }
+      }
+    },
+    "animation.pa_jelly.rotate": {
+      "anim_time_update": "query.modified_distance_moved",
+      "loop": true,
+      "bones": {
+        "body": {
+          "rotation": [
+            { "y": "180.0 - this" },
+            { "x": "query.body_x_rotation" },
+            { "y": "query.body_y_rotation" }
+          ]
+        }
+      }
+    }
+  }
+}

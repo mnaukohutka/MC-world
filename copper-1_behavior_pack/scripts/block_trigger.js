@@ -12,19 +12,19 @@ const toolTags = [];
     const xpRange = [];
 
     setupCustomBlockDrop(e, false, toolTags, "blocks/pa_copper_portal", xpRange, true); },
-onStepOn: e => { e.entity.addEffect("minecraft:levitation", 300.0, { amplifier: 1 }); },
+onStepOn: e => { e.entity?.addEffect("minecraft:levitation", 300.0, { amplifier: 1 }); },
 });
 
 initEvent.blockComponentRegistry.registerCustomComponent('pa_fluid_copper_oxidized:trigger', {
   onTick: tickFluid,
-  onStepOn: e => { e.entity.addEffect("minecraft:night_vision", 3000.0, { amplifier: 1 }); },
-  onStepOff: e => { e.entity.addEffect("minecraft:hunger", 1400.0, { amplifier: 1 }); },
+  onStepOn: e => { e.entity?.addEffect("minecraft:night_vision", 3000.0, { amplifier: 1 }); },
+  onStepOff: e => { e.entity?.addEffect("minecraft:hunger", 1400.0, { amplifier: 1 }); },
 });
 
 initEvent.blockComponentRegistry.registerCustomComponent('pa_fluid_copper:trigger', {
   onTick: tickFluid,
-  onStepOn: e => { e.entity.addEffect("minecraft:night_vision", 3000.0, { amplifier: 1 }); },
-onStepOff: e => { e.entity.addEffect("minecraft:hunger", 1400.0, { amplifier: 1 }); },
+  onStepOn: e => { e.entity?.addEffect("minecraft:night_vision", 3000.0, { amplifier: 1 }); },
+onStepOff: e => { e.entity?.addEffect("minecraft:hunger", 1400.0, { amplifier: 1 }); },
 });
 
   initEvent.blockComponentRegistry.registerCustomComponent('pa_copper_lamp:trigger', {

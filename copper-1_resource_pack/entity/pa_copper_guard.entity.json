@@ -13,6 +13,10 @@
         "default": "geometry.goat"
       },
       "scripts": {
+        "pre_animation": [
+          "variable.tcos_right_side = Math.cos(query.modified_distance_moved * 38.17) * query.modified_move_speed * 57.3;",
+          "variable.tcos_left_side = -variable.tcos_right_side;"
+        ],
         "animate": [
           "walk",
           "look_at_target"
