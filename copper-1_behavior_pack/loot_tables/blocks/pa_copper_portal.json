@@ -113,7 +113,7 @@
         {
           "type": "item",
           "weight": 1,
-          "name": "minecraft:copper_pickaxe",
+          "name": "minecraft:copper_ingot",
           "data": 0,
           "functions": [
             {
@@ -132,7 +132,7 @@
         {
           "type": "item",
           "weight": 1,
-          "name": "minecraft:copper_torch",
+          "name": "minecraft:torch",
           "data": 0,
           "functions": [
             {

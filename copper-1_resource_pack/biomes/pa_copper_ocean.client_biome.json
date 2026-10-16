@@ -7,7 +7,7 @@
     "components": {
       "minecraft:biome_music": {
         "volume_multiplier": 0.4,
-        "music_definition": "ocean"
+        "music_definition": "water"
       },
       "minecraft:foliage_appearance": {
         "color": "#4a7c2f"

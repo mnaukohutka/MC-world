@@ -1,5 +1,5 @@
 {
-  "format_version": "1.20.50",
+  "format_version": "1.21.90",
   "minecraft:block": {
     "description": {
       "identifier": "pa:fluid_copper_oxidized",
@@ -48,6 +48,7 @@
       ],
       "minecraft:destructible_by_mining": false,
       "minecraft:loot": "loot_tables/blocks/pa_fluid_copper_oxidized.json",
+      "pa_fluid_copper_oxidized:trigger": {}
     },
     "permutations": [
       {
@@ -135,10 +136,10 @@
             "condition": "q.block_state('block:depth') == 4",
             "run_command": {
               "command": [
-                "execute if block ~~~1 air run setblock ~~~1 pa:fluid [\"block:source\"=false,\"block:depth\"=3]",
-                "execute if block ~~~-1 air run setblock ~~~-1 pa:fluid [\"block:source\"=false,\"block:depth\"=3]",
-                "execute if block ~1~~ air run setblock ~1~~ pa:fluid [\"block:source\"=false,\"block:depth\"=3]",
-                "execute if block ~-1~~ air run setblock ~-1~~ pa:fluid [\"block:source\"=false,\"block:depth\"=3]"
+                "execute if block ~~~1 air run setblock ~~~1 pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=3]",
+                "execute if block ~~~-1 air run setblock ~~~-1 pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=3]",
+                "execute if block ~1~~ air run setblock ~1~~ pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=3]",
+                "execute if block ~-1~~ air run setblock ~-1~~ pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=3]"
               ]
             }
           },
@@ -158,10 +159,10 @@
             "condition": "q.block_state('block:depth') == 3",
             "run_command": {
               "command": [
-                "execute if block ~~~1 air unless block ~~-1~ air unless block ~~-1~ pa:fluid run setblock ~~~1 pa:fluid [\"block:source\"=false,\"block:depth\"=2]",
-                "execute if block ~~~-1 air unless block ~~-1~ air unless block ~~-1~ pa:fluid run setblock ~~~-1 pa:fluid [\"block:source\"=false,\"block:depth\"=2]",
-                "execute if block ~1~~ air unless block ~~-1~ air unless block ~~-1~ pa:fluid run setblock ~1~~ pa:fluid [\"block:source\"=false,\"block:depth\"=2]",
-                "execute if block ~-1~~ air unless block ~~-1~ air unless block ~~-1~ pa:fluid run setblock ~-1~~ pa:fluid [\"block:source\"=false,\"block:depth\"=2]"
+                "execute if block ~~~1 air unless block ~~-1~ air unless block ~~-1~ pa:fluid_copper_oxidized run setblock ~~~1 pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=2]",
+                "execute if block ~~~-1 air unless block ~~-1~ air unless block ~~-1~ pa:fluid_copper_oxidized run setblock ~~~-1 pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=2]",
+                "execute if block ~1~~ air unless block ~~-1~ air unless block ~~-1~ pa:fluid_copper_oxidized run setblock ~1~~ pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=2]",
+                "execute if block ~-1~~ air unless block ~~-1~ air unless block ~~-1~ pa:fluid_copper_oxidized run setblock ~-1~~ pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=2]"
               ]
             }
           },
@@ -169,10 +170,10 @@
             "condition": "q.block_state('block:depth') == 2",
             "run_command": {
               "command": [
-                "execute if block ~~~1 air unless block ~~-1~ air unless block ~~-1~ pa:fluid run setblock ~~~1 pa:fluid [\"block:source\"=false,\"block:depth\"=1]",
-                "execute if block ~~~-1 air unless block ~~-1~ air unless block ~~-1~ pa:fluid run setblock ~~~-1 pa:fluid [\"block:source\"=false,\"block:depth\"=1]",
-                "execute if block ~1~~ air unless block ~~-1~ air unless block ~~-1~ pa:fluid run setblock ~1~~ pa:fluid [\"block:source\"=false,\"block:depth\"=1]",
-                "execute if block ~-1~~ air unless block ~~-1~ air unless block ~~-1~ pa:fluid run setblock ~-1~~ pa:fluid [\"block:source\"=false,\"block:depth\"=1]"
+                "execute if block ~~~1 air unless block ~~-1~ air unless block ~~-1~ pa:fluid_copper_oxidized run setblock ~~~1 pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=1]",
+                "execute if block ~~~-1 air unless block ~~-1~ air unless block ~~-1~ pa:fluid_copper_oxidized run setblock ~~~-1 pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=1]",
+                "execute if block ~1~~ air unless block ~~-1~ air unless block ~~-1~ pa:fluid_copper_oxidized run setblock ~1~~ pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=1]",
+                "execute if block ~-1~~ air unless block ~~-1~ air unless block ~~-1~ pa:fluid_copper_oxidized run setblock ~-1~~ pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=1]"
               ]
             }
           },
@@ -180,25 +181,25 @@
             "condition": "q.block_state('block:depth') == 5 && q.block_neighbor_has_any_tag(0, 1, 0, 'fluid')",
             "run_command": {
               "command": [
-                "execute if block ~~-1~ pa:fluid [\"block:depth\"=3] run setblock ~~-1~ pa:fluid [\"block:source\"=false,\"block:depth\"=5]",
-                "execute if block ~~-1~ pa:fluid [\"block:depth\"=2] run setblock ~~-1~ pa:fluid [\"block:source\"=false,\"block:depth\"=5]",
-                "execute if block ~~-1~ pa:fluid [\"block:depth\"=1] run setblock ~~-1~ pa:fluid [\"block:source\"=false,\"block:depth\"=5]",
-                "execute unless block ~~-1~ air unless block ~~-1~ pa:fluid if block ~1~~ air run setblock ~1~~ pa:fluid [\"block:source\"=false,\"block:depth\"=3]",
-                "execute unless block ~~-1~ air unless block ~~-1~ pa:fluid if block ~~~1 air run setblock ~~~1 pa:fluid [\"block:source\"=false,\"block:depth\"=3]",
-                "execute unless block ~~-1~ air unless block ~~-1~ pa:fluid if block ~-1~~ air run setblock ~-1~~ pa:fluid [\"block:source\"=false,\"block:depth\"=3]",
-                "execute unless block ~~-1~ air unless block ~~-1~ pa:fluid if block ~~~-1 air run setblock ~~~-1 pa:fluid [\"block:source\"=false,\"block:depth\"=3]"
+                "execute if block ~~-1~ pa:fluid_copper_oxidized [\"block:depth\"=3] run setblock ~~-1~ pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=5]",
+                "execute if block ~~-1~ pa:fluid_copper_oxidized [\"block:depth\"=2] run setblock ~~-1~ pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=5]",
+                "execute if block ~~-1~ pa:fluid_copper_oxidized [\"block:depth\"=1] run setblock ~~-1~ pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=5]",
+                "execute unless block ~~-1~ air unless block ~~-1~ pa:fluid_copper_oxidized if block ~1~~ air run setblock ~1~~ pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=3]",
+                "execute unless block ~~-1~ air unless block ~~-1~ pa:fluid_copper_oxidized if block ~~~1 air run setblock ~~~1 pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=3]",
+                "execute unless block ~~-1~ air unless block ~~-1~ pa:fluid_copper_oxidized if block ~-1~~ air run setblock ~-1~~ pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=3]",
+                "execute unless block ~~-1~ air unless block ~~-1~ pa:fluid_copper_oxidized if block ~~~-1 air run setblock ~~~-1 pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=3]"
               ]
             }
           },
           {
             "run_command": {
-              "command": "execute if block ~~-1~ air run setblock ~~-1~ pa:fluid [\"block:source\"=false,\"block:depth\"=5]"
+              "command": "execute if block ~~-1~ air run setblock ~~-1~ pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=5]"
             }
           },
           {
             "condition": "q.block_neighbor_has_any_tag(0, -1, 0, 'flowing_fluid')",
             "run_command": {
-              "command": "setblock ~~-1~ pa:fluid [\"block:source\"=false,\"block:depth\"=5]"
+              "command": "setblock ~~-1~ pa:fluid_copper_oxidized [\"block:source\"=false,\"block:depth\"=5]"
             }
           }
         ]

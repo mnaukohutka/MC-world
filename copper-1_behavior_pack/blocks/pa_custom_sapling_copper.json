@@ -1,5 +1,5 @@
 {
-  "format_version": "1.20.50",
+  "format_version": "1.21.90",
   "minecraft:block": {
     "description": {
       "identifier": "pa:custom_sapling_copper",
@@ -89,6 +89,7 @@
           }
         ]
       },
+      "pa_custom_sapling_copper:trigger": {}
     }
   }
 }

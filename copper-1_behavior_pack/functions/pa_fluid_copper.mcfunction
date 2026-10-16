@@ -1,1 +1,1 @@
-give @s minecraft:fluid_copper
+give @s pa:fluid_copper_bucket

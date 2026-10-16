@@ -10,6 +10,7 @@ import {
   CommandPermissionLevel,
 } from "@minecraft/server";
 import { ActionFormData } from "@minecraft/server-ui";
+import { safeSubscribe } from '../utils/helper';
 
 /*
  * Custom dimension runtime.
@@ -96,7 +97,7 @@ function vec(v, fallback) {
 
 // No registerCustomDimension here: the dimension JSON already registers every
 // id, and registering one again from script is a conflict, not a fallback.
-system.beforeEvents.startup.subscribe((event) => {
+safeSubscribe(system.beforeEvents.startup, (event) => {
   if (!menu) return;
 
   if (menu.itemComponent) {
@@ -113,7 +114,7 @@ system.beforeEvents.startup.subscribe((event) => {
   for (const config of registry) {
     if (config.command) registerCommand(event, config.command, config);
   }
-});
+}, 'system.beforeEvents.startup');
 
 /**
  * `direct` returns the dimension to travel to, or null to open the menu.
@@ -160,9 +161,9 @@ function registerCommand(event, name, config) {
 
 // ── Build ──────────────────────────────────────────────────────────────────
 
-world.afterEvents.worldLoad.subscribe(() => {
+safeSubscribe(world.afterEvents.worldLoad, () => {
   void buildAll();
-});
+}, 'world.afterEvents.worldLoad');
 
 // Sequential: each dimension holds a temporary ticking area while it builds, so
 // running them together would multiply the chunk cost by the dimension count.

@@ -1,8 +1,8 @@
 import { system, world } from '@minecraft/server';
-import { setupCustomBlockDrop, decrementStack, getOppositeDirection, DirectionType, cardinalSides, randomFunction, shouldConnect, safeUpdateStairShape, stripLogWithAxe, pressCustomButton, orientCustomButton } from './utils/helper';
+import { setupCustomBlockDrop, decrementStack, getOppositeDirection, DirectionType, cardinalSides, randomFunction, shouldConnect, safeUpdateStairShape, stripLogWithAxe, pressCustomButton, orientCustomButton, safeSubscribe } from './utils/helper';
 import { directionToVector3 } from './utils/math';
 
-system.beforeEvents.startup.subscribe(initEvent => {
+safeSubscribe(system.beforeEvents.startup, initEvent => {
   initEvent.blockComponentRegistry.registerCustomComponent('pa_copper_portal:trigger', {
   onBreak: e => { const { x, y, z } = e.block.location;
 const toolTags = [];
@@ -56,4 +56,4 @@ dimension.placeFeature("pa:tree_copper", block.location);
  },
 });
 
-});
+}, 'system.beforeEvents.startup');
