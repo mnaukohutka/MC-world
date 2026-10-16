@@ -20,6 +20,11 @@
         "item": "minecraft:copper_block"
       }
     },
+    "unlock": [
+      {
+        "item": "minecraft:copper_block"
+      }
+    ],
     "result": {
       "item": "pa:custom_sapling_copper_placer",
       "count": 1

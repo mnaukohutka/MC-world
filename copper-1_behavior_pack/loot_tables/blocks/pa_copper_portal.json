@@ -20,7 +20,7 @@
         {
           "type": "item",
           "weight": 1,
-          "name": "pa:custom_sapling_copper",
+          "name": "pa:custom_sapling_copper_placer",
           "functions": [
             {
               "function": "set_count",
