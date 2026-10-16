@@ -1,0 +1,32 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "pa:copper_ghost",
+      "materials": {
+        "default": "entity_alphatest"
+      },
+      "textures": {
+        "default": "textures/entity/pa_mobs/copper_ghost"
+      },
+      "geometry": {
+        "default": "geometry.pa_ghost"
+      },
+      "scripts": {
+        "animate": [
+          "float"
+        ]
+      },
+      "animations": {
+        "float": "animation.pa_ghost.float"
+      },
+      "render_controllers": [
+        "controller.render.default"
+      ],
+      "spawn_egg": {
+        "base_color": "#eaf7ff",
+        "overlay_color": "#9fd8e6"
+      }
+    }
+  }
+}

@@ -41,6 +41,7 @@ const GUARD = "pa:copper_guard";
 const BOAR = "pa:copper_boar";
 const JELLY = "pa:copper_jelly";
 const VILLAGER = "pa:copper_villager";
+const GHOST = "pa:copper_ghost";
 
 /* The dimension stays mostly peaceful; the golem is the old pack resident and
  * a rare creeper keeps the caves from being entirely safe. */
@@ -50,6 +51,7 @@ const CREEPER = "minecraft:creeper";
 const SPAWN_RADIUS = 32;
 const MIN_DISTANCE = 14;
 const MAX_NEARBY = 24;
+const MIN_UNDERGROUND_Y = -56;
 
 /** The pack's own fluid, in both oxidation stages. */
 const COPPER_FLUID = new Set(["pa:fluid_copper", "pa:fluid_copper_oxidized"]);
@@ -106,6 +108,17 @@ function trySpawn(player) {
     return;
   }
 
+  /*
+   * A player deep underground gets the cave population instead of the surface
+   * one. This is what makes the caves feel inhabited: the burrowers and the
+   * fungus-laden bat belong to the rock, and dropping them at the top of the
+   * column would leave them on the grass instead.
+   */
+  if (player.location.y < surface.location.y - 6) {
+    spawnUnderground(dimension, player, x, z, surface.location.y);
+    return;
+  }
+
   const roll = Math.random();
   if (roll < 0.16) {
     spawnHerd(dimension, x, surface.location.y, z, BEE, 3);
@@ -127,7 +140,10 @@ function trySpawn(player) {
     spawnHerd(dimension, x, surface.location.y, z, WISP, 2);
   } else if (roll < 0.84) {
     spawnHerd(dimension, x, surface.location.y, z, VILLAGER, 2);
-  } else if (roll < 0.88) {
+  } else if (roll < 0.86) {
+    // The happy ghost is a rare, warm surprise — rarer than anything else here.
+    spawnEntity(dimension, GHOST, { x: x + 0.5, y: surface.location.y + 2, z: z + 0.5 });
+  } else if (roll < 0.89) {
     // The shade is deliberately rarer than the keeper: light should mostly win.
     spawnHerd(dimension, x, surface.location.y, z, SHADE, 1);
   } else if (roll < 0.96) {
@@ -135,6 +151,68 @@ function trySpawn(player) {
   } else {
     spawnEntity(dimension, CREEPER, { x: x + 0.5, y: surface.location.y + 1, z: z + 0.5 });
   }
+}
+
+/*
+ * The cave population. A player's own depth is the reference, so a shaft is
+ * populated with the burrowers that live in it rather than with surface animals
+ * that happen to stand above it. The spawn cell is pulled to the player's own
+ * level, in a small pocket of air, so arrivals are never placed inside rock.
+ */
+function spawnUnderground(dimension, player, x, z, surfaceY) {
+  const y = Math.max(MIN_UNDERGROUND_Y, Math.min(surfaceY - 8, Math.floor(player.location.y)));
+  const at = findAirPocket(dimension, { x: x + 0.5, y, z: z + 0.5 }, 4);
+  if (!at) return;
+
+  const roll = Math.random();
+  if (roll < 0.26) {
+    spawnHerd(dimension, at.x, at.y - 1, at.z, MOLE, 2);
+  } else if (roll < 0.5) {
+    spawnHerd(dimension, at.x, at.y - 1, at.z, BORER, 2);
+  } else if (roll < 0.72) {
+    spawnHerd(dimension, at.x, at.y - 1, at.z, MITE, 2);
+  } else if (roll < 0.94) {
+    // Bats hover a block or two above the cave floor, still inside the pocket.
+    spawnCaveFlyers(dimension, at, BAT, 3);
+  } else {
+    // Caves are mostly safe, but not entirely.
+    spawnEntity(dimension, CREEPER, at);
+  }
+}
+
+/** Scatters flyers through the air cells directly above a cave anchor. */
+function spawnCaveFlyers(dimension, at, typeId, count) {
+  for (let i = 0; i < count; i++) {
+    const spot = {
+      x: at.x + (Math.random() - 0.5) * 3,
+      y: at.y + (Math.random() < 0.5 ? 1 : 2),
+      z: at.z + (Math.random() - 0.5) * 3,
+    };
+    if (isAirAt(dimension, spot) && isAirAt(dimension, { x: spot.x, y: spot.y + 1, z: spot.z })) {
+      dimension.spawnEntity(typeId, spot);
+    }
+  }
+}
+
+/** The first air block within `radius` of `origin`, scanning up then outwards. */
+function findAirPocket(dimension, origin, radius) {
+  for (let r = 0; r <= radius; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        for (let dz = -r; dz <= r; dz++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) !== r) continue;
+          const at = { x: origin.x + dx, y: origin.y + dy, z: origin.z + dz };
+          if (!isAirAt(dimension, at)) continue;
+          // Require a solid floor and headroom, so nothing spawns mid-fall.
+          const below = dimension.getBlock({ x: Math.floor(at.x), y: Math.floor(at.y) - 1, z: Math.floor(at.z) });
+          if (below && !below.isAir && !below.isLiquid && isAirAt(dimension, { x: at.x, y: at.y + 1, z: at.z })) {
+            return { x: Math.floor(at.x) + 0.5, y: Math.floor(at.y), z: Math.floor(at.z) + 0.5 };
+          }
+        }
+      }
+    }
+  }
+  return undefined;
 }
 
 function spawnEntity(dimension, typeId, at) {
@@ -208,4 +286,7 @@ function nearbyCount(dimension, location) {
 
 // Referenced so the allow-list stays visible: villagers arrive with the village
 // build; these constants document that nothing else is meant to spawn.
-export const POPULATION = [BEE, FISH, MOLE, KEEPER, MINNOW, CRAB, SHADE, BAT, MITE, WISP, COPPER_GOLEM, CREEPER];
+export const POPULATION = [
+  BEE, FISH, MOLE, KEEPER, MINNOW, CRAB, SHADE, BAT, MITE, WISP,
+  BORER, GUARD, BOAR, JELLY, VILLAGER, GHOST, COPPER_GOLEM, CREEPER,
+];

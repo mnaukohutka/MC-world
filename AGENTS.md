@@ -186,3 +186,73 @@ metadata/json_schemas/server/block/<ver>/.
 - Flying mobs cannot be placed on the ground surface: give them air height when
   spawning (`FLYERS` in `scripts/dimension/mobs.js`), and carve the burrower's
   space before spawning it, or it suffocates or is stuck in the block.
+
+
+## Round-9: every mob works, natural spawns, caves and structures
+
+- The Molang "unknown variable" errors for variable.animationamountprev,
+  animationamountblend, tcos_left/right_side and squid.tentacle_angle /
+  swim_rotation are all the same mistake: reusing a vanilla animation on a
+  custom entity whose entity definition never sets the variables that animation
+  reads. Those variables are filled by the vanilla mob own pre_animation; a
+  custom entity that plays the vanilla animation gets nothing. Two fixes: copy
+  the pre_animation in only when every variable it needs is query-derived (goat
+  tcos_* is; cod and squid are not, because they also read engine-only vars),
+  otherwise write a small custom animation under resource_pack/animations/ that
+  uses query.anim_time only.
+- Squid-only AI goals (minecraft:behavior.squid_*) refuse to load unless the
+  mob is a squid; the same applies to other vanilla-goal families. Use the
+  generic water goals (random_swim, look_at_player) for a custom aquatic mob.
+- An animation-controller loop comes from a shortname colliding with itself: a
+  client entity whose animations key move maps to controller.animation.silverfish.move
+  while scripts.animate also says move -- the controller own state plays move
+  internally, so it references itself. Mirror the vanilla client entity exactly:
+  list the controller under animation_controllers, map move to the animation,
+  and drive the controller by a different shortname (or none).
+- BlockComponentStepOn/OffEvent.entity is optional -- it is undefined for a step
+  with no source entity (falling block, vehicle, projectile). Guard the access:
+  e.entity?.addEffect(...).
+- Script-registered dimensions have no custom biome, so spawn_rules/*.json
+  (which match on a biome tag) never fire there and the pack mobs would never
+  appear on their own. Spawning is done in scripts/dimension/mobs.js, which
+  rolls a site around each player and picks the mob by niche -- surface land,
+  open air, fluid column, shore, or cave (chosen from the player own depth).
+- Every custom mob job lives in scripts/dimension/workers.js: one interval picks
+  the nearest worker and lets it take a single action. Adding a mob with a craft
+  means adding it to WORKERS/WORKER_TYPES and a case in act(). random3ish(worker)
+  gives a stable-but-varying roll per worker so it does not flip-flop each cycle.
+- New structures go in scripts/structures.js as build* functions wired into
+  LANDMARKS + the switch in gatherLandmark. Surface builds use withSurface, shore
+  builds use withShore, and anything underground is anchored at STONE_BOTTOM + n
+  so it is buried in the rock band rather than floating in the caves.
+- A custom ghost mob needs its own geometry if the borrowed vanilla one has
+  engine-driven bones or a face baked into shared UV space. A hand-written
+  geometry.pa_ghost with an explicit per-cube uv block gives full control of the
+  face; the texture is drawn at 64x64 with the face cells at the cube north and
+  south UV rectangles.
+
+
+## Round-10: /locate for structures and biomes
+
+- The world is script-generated and every point of interest is a pure function of
+  its cell coordinates and the world seed, so /locate needs no block scan: it
+  walks the same plan grids the generator fills and returns the first matching
+  cell. This is why structures.js exports buildAt / chestAt / landmarkAt -- the
+  command and the generator share the arithmetic, so a reported spot is one that
+  exists. Keep them pure; a block read in a planner would break the command.
+- A registered custom dimension has no biome registry, so the vanilla /locate
+  cannot see the copper biomes. locate.js decides a column biome from
+  biomeAtColumn (a pure noise read), and its search walks outward in rings of
+  columns, testing only each ring perimeter so the cost is linear in the radius.
+  A biome field is low-frequency: the step is 8 blocks and the range is capped so
+  the callback cannot trip the script watchdog.
+- A command enum rejects hyphens and capitals, so a build id such as
+  copper_lucerna-A1 is folded to copper_lucerna_a1 for the enum and mapped back
+  through a tokens table. Landmark kinds are already enum-safe.
+- Custom commands are registered once, in a system.beforeEvents.startup handler
+  (safeSubscribe / registerCommand). The callback runs in read-only mode, so any
+  teleport or terrain work has to be deferred through system.run.
+- A structure a player has not visited has no ground yet, so a surface build has
+  no Y to report. locate reporting uses the generator predicted surface
+  (predictedSurface) as the fallback for exactly that case; a buried landmark has
+  a fixed Y from the LANDMARK_DEPTH table.

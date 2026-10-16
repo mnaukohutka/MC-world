@@ -1,4 +1,5 @@
 import { registerDimension, installTravelMenu } from "./dimension";
+import { installLocateCommand } from "./locate";
 import "./dimension_rules";
 import "./dimension_portal";
 import "./mobs";
@@ -44,3 +45,10 @@ installTravelMenu({
   ],
   "itemComponent": "pa:dimension_menu_use"
 });
+
+/*
+ * `/locate:structure` and `/locate:biome`. The search walks the same plan grids
+ * the generator fills, so a reported spot is one that exists — see `locate.js`.
+ * The dimension config is passed through so a search reads the right world.
+ */
+installLocateCommand({ typeId: "pa:copper_dimension" });

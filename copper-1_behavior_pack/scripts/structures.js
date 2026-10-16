@@ -40,9 +40,22 @@ const SEA_LEVEL = 64;
  */
 const STONE_BOTTOM = -12;
 
+/*
+ * The depth each buried landmark sits at, relative to the guaranteed stone
+ * band. It is a table rather than an argument at each call site so the builder
+ * and the `/locate` search cannot disagree about where a geode is.
+ */
+const LANDMARK_DEPTH = {
+  treasure_vault: STONE_BOTTOM + 24,
+  trial_chambers: STONE_BOTTOM + 18,
+  ancient_city: STONE_BOTTOM + 2,
+  geode: STONE_BOTTOM + 30,
+  collapsed_mine: STONE_BOTTOM + 12,
+};
+
 /** The pack's own builds. Vanilla camps have no reachable structure id, so the
  * copper builds double as the dimension's landmarks. */
-const BUILDS = [
+export const BUILDS = [
   "copper_temple",
   "copper_fontana",
   "copper_lucerna-p",
@@ -50,6 +63,16 @@ const BUILDS = [
   "copper_lucerna-A1",
   "copper_lucerna-P1",
 ];
+
+/** Tile edge, matching the terrain generator. */
+const TILE = 16;
+
+/** The three plan grids, in tiles: builds, chests and landmarks. */
+export const PLAN_CELLS = {
+  build: REGION,
+  chest: CHEST_REGION,
+  landmark: LANDMARK_REGION,
+};
 
 const SALT_CHEST = 0x9e37;
 const SALT_LOOT = 0x4d2a;
@@ -95,17 +118,20 @@ function rotationFor(x, z) {
   return options[Math.floor(random(x, z, 0x77) * 4) % 4];
 }
 
-function groundY(dimension, x, z) {
+/**
+ * The Y of the first air block above a column's ground, or `undefined` when the
+ * column has no usable surface.
+ *
+ * `getTopmostBlock` reports the build ceiling for a column that is still
+ * unloaded, and `StructureManager.place` rejects any volume leaving the world
+ * bounds — which is what produced "Invalid structure bounds". Anything too close
+ * to the ceiling is rejected so the tile can regenerate later.
+ */
+export function groundY(dimension, x, z) {
   try {
     const top = dimension.getTopmostBlock({ x, z });
     if (!top) return undefined;
     const y = top.location.y + 1;
-    /*
-     * `getTopmostBlock` reports the build ceiling for a column that is still
-     * unloaded, and `StructureManager.place` rejects any volume leaving the
-     * world bounds — which is what produced "Invalid structure bounds". Reject
-     * anything too close to the ceiling and let the tile regenerate later.
-     */
     if (y <= WORLD_MIN_Y + 1 || y > WORLD_MAX_Y - BUILD_CLEARANCE) return undefined;
     return y;
   } catch {
@@ -426,6 +452,274 @@ function buildTreasureVault(dimension, x, y, z) {
 }
 
 /**
+ * A mine shaft: a vertical timbered shaft with landings, ladders and ore in the
+ * walls. It is the connection the caves otherwise lack — a way down from the
+ * surface that a player can find and use — and the landings give it structure
+ * rather than leaving it a bare hole.
+ */
+function buildMineShaft(dimension, x, y, z) {
+  const depth = 26;
+  const half = 2;
+  for (let dy = 0; dy < depth; dy++) {
+    const yy = y - dy;
+    // Carve a 5x5 shaft with a solid timber lining.
+    for (let dx = -half; dx <= half; dx++) {
+      for (let dz = -half; dz <= half; dz++) {
+        const edge = Math.abs(dx) === half || Math.abs(dz) === half;
+        setBlock(dimension, x + dx, yy, z + dz, edge ? P.wood : P.air);
+      }
+    }
+    // A landing every eight blocks, so a fall is survivable and there is a floor
+    // to stand on while climbing.
+    if (dy > 0 && dy % 8 === 0) {
+      fillBox(dimension, x - half, yy, z - half, x + half, yy, z + half, P.cutSlab);
+      setBlock(dimension, x, yy, z, P.air);
+      addLantern(dimension, x + half - 1, yy + 2, z + half - 1);
+      // Ore in the landing walls, so each level pays a little.
+      setBlock(dimension, x - half, yy + 1, z, P.raw);
+      setBlock(dimension, x + half, yy + 1, z, P.raw);
+    }
+  }
+  // A headframe over the shaft: four posts and a lit cap.
+  for (const [px, pz] of [[-half, -half], [half, -half], [-half, half], [half, half]]) {
+    for (let dy = depth; dy <= depth + 2; dy++) setBlock(dimension, x + px, y + dy, z + pz, P.bricks);
+  }
+  setBlock(dimension, x, y + depth + 3, z, P.bulb);
+  fillBox(dimension, x - half, y + depth + 2, z - half, x + half, y + depth + 2, z + half, P.cutSlab);
+  // A chest and a lamp at the bottom, the reward for the climb down.
+  placeChestAt(dimension, x, y - depth + 1, z, x, z);
+  addLantern(dimension, x, y - depth + 3, z);
+}
+
+/**
+ * A geode: a hollow shell of oxidized copper lined with sparkling gem ore and a
+ * raw-copper core. Finding one is the dimension's treasure hunt — the shell
+ * hides what is inside until a player breaks through.
+ */
+function buildGeode(dimension, x, y, z) {
+  const radius = 5;
+  const inner = 3;
+  for (let dx = -radius; dx <= radius; dx++) {
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dz = -radius; dz <= radius; dz++) {
+        const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (d > radius) continue;
+        if (d > inner) {
+          // The shell: solid, weathered copper, with the odd ore pocket.
+          setBlock(dimension, x + dx, y + dy, z + dz, random(dx + dy, dz, 0x6a) < 0.15 ? P.raw : P.oxidized);
+        } else {
+          // The hollow: cleared, with gem ore studding the inner wall and a
+          // cluster of raw copper at the very centre.
+          setBlock(dimension, x + dx, y + dy, z + dz, d > inner - 1 ? P.cut : P.air);
+        }
+      }
+    }
+  }
+  // The core: a stack of raw copper and a lamp, so the find reads from inside.
+  setBlock(dimension, x, y, z, P.raw);
+  setBlock(dimension, x, y + 1, z, P.raw);
+  setBlock(dimension, x, y + 2, z, P.bulb);
+  addLantern(dimension, x + 2, y + 2, z);
+  addLantern(dimension, x - 2, y + 2, z);
+  placeChestAt(dimension, x, y + 1, z + 1, x, z);
+}
+
+/**
+ * A collapsed mine: the ruin of an older working — a broken gallery, fallen
+ * beams, exposed ore and a flooded floor. It is decoration and hazard in one,
+ * the sort of place a borer's tunnel runs into.
+ */
+function buildCollapsedMine(dimension, x, y, z) {
+  const half = 7;
+  const height = 5;
+  buildRoom(dimension, x, y, z, half, half, height, P.weathered, P.cut, P.weatheredCut);
+
+  // The roof is torn open in two places, letting daylight (or the world above)
+  // in, which is what makes the ruin read as "collapsed" rather than "built".
+  for (let d = -3; d <= 3; d++) {
+    setBlock(dimension, x + d, y + height, z + 2, P.air);
+    setBlock(dimension, x - 5, y + height, z + d, P.air);
+  }
+
+  // Fallen beams: a few leaning posts in among standing ones.
+  for (let d = -half + 2; d <= half - 2; d += 3) {
+    const standing = random(d, 0x31, 0x6b) < 0.5;
+    setBlock(dimension, x + d, y + 1, z - half + 1, P.wood);
+    setBlock(dimension, x + d, y + 2, z - half + 1, standing ? P.wood : P.air);
+    if (standing) setBlock(dimension, x + d, y + 3, z - half + 1, P.wood);
+  }
+
+  // Exposed ore across the floor and walls, and a puddle where water got in.
+  for (let d = -half + 1; d <= half - 1; d += 2) {
+    setBlock(dimension, x + d, y + 1, z + half, P.raw);
+    setBlock(dimension, x - half, y + 1, z + d, P.oxidized);
+  }
+  fillBox(dimension, x - 2, y, z - 2, x + 1, y, z + 1, P.air);
+  setBlock(dimension, x - 2, y, z - 2, P.water);
+
+  // One surviving chest, half-buried under a fall of stone.
+  placeChestAt(dimension, x + half - 2, y + 1, z - 1, x, z);
+  setBlock(dimension, x + half - 2, y + 4, z - 1, P.weathered);
+  addLantern(dimension, x - half + 1, y + 3, z + half - 1);
+}
+
+/**
+ * A lighthouse: a tall banded copper tower on the shore, capped with a lit
+ * lantern room. It is the one surface landmark that is visible from far off, so
+ * it doubles as a waypoint across the ocean.
+ */
+function buildLighthouse(dimension, x, y, z) {
+  const height = 16;
+  const radius = 2;
+  // A banded tower: cut copper and weathered courses alternating, so the height
+  // reads at a distance.
+  for (let dy = 0; dy < height; dy++) {
+    const band = Math.floor(dy / 3) % 2 === 0 ? P.cut : P.weathered;
+    const r = dy >= height - 4 ? radius + 1 : radius;
+    for (let dx = -r; dx <= r; dx++) {
+      for (let dz = -r; dz <= r; dz++) {
+        const edge = Math.abs(dx) === r || Math.abs(dz) === r;
+        setBlock(dimension, x + dx, y + dy, z + dz, edge ? band : (dy === 0 ? P.bricks : P.air));
+      }
+    }
+  }
+  // The lantern room: a glass cage with a bulb core and a lantern on each corner.
+  fillBox(dimension, x - radius - 1, y + height, z - radius - 1, x + radius + 1, y + height, z + radius + 1, P.cutSlab);
+  for (let dy = height + 1; dy <= height + 3; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      for (let dz = -radius; dz <= radius; dz++) {
+        const edge = Math.abs(dx) === radius || Math.abs(dz) === radius;
+        setBlock(dimension, x + dx, y + dy, z + dz, edge ? P.glass : P.air);
+      }
+    }
+  }
+  setBlock(dimension, x, y + height + 2, z, P.bulb);
+  fillBox(dimension, x - radius - 1, y + height + 4, z - radius - 1, x + radius + 1, y + height + 4, z + radius + 1, P.cut);
+  setBlock(dimension, x, y + height + 5, z, P.raw);
+
+  // An entrance and a dock ring of cut copper at the base.
+  setBlock(dimension, x, y + 1, z + radius, P.air);
+  setBlock(dimension, x, y + 2, z + radius, P.air);
+  for (const [px, pz] of [[-radius - 2, 0], [radius + 2, 0], [0, -radius - 2]]) {
+    setBlock(dimension, x + px, y + 1, z + pz, P.raw);
+  }
+}
+
+/**
+ * A farmstead: a walled field, an irrigation channel and a copper-grate barn.
+ * It is the surface's working build — farms the pack's own copper grass and
+ * soil, watered from a central channel, with a chest in the barn.
+ */
+function buildFarmstead(dimension, x, y, z) {
+  const half = 6;
+  // A low brick wall around the field.
+  for (let dx = -half; dx <= half; dx++) {
+    for (let dz = -half; dz <= half; dz++) {
+      const edge = Math.abs(dx) === half || Math.abs(dz) === half;
+      if (edge) setBlock(dimension, x + dx, y + 1, z + dz, P.bricks);
+      else setBlock(dimension, x + dx, y, z + dz, P.soil);
+    }
+  }
+  // An irrigation channel down the middle, watered.
+  for (let dz = -half + 1; dz <= half - 1; dz++) {
+    setBlock(dimension, x, y, z + dz, P.water);
+    setBlock(dimension, x, y - 1, z + dz, P.bricks);
+  }
+  // Copper grass rows either side of the channel.
+  for (let dz = -half + 1; dz <= half - 1; dz += 2) {
+    setBlock(dimension, x - 2, y + 1, z + dz, P.grass);
+    setBlock(dimension, x + 2, y + 1, z + dz, P.grass);
+  }
+  // The barn: a grate-walled shelter with a chest, on one corner.
+  buildRoom(dimension, x + half + 4, y, z, 3, 3, 4, P.wood, P.bricks, P.cutSlab);
+  setBlock(dimension, x + half + 1, y + 1, z, P.air);
+  setBlock(dimension, x + half + 1, y + 2, z, P.air);
+  for (let dy = 1; dy < 4; dy++) {
+    setBlock(dimension, x + half + 4 - 3, y + dy, z - 3, P.grate);
+    setBlock(dimension, x + half + 4 - 3, y + dy, z + 3, P.grate);
+  }
+  addLantern(dimension, x + half + 4, y + 3, z);
+  placeChestAt(dimension, x + half + 3, y + 1, z - 1, x, z);
+  // A scarecrow: a post with a bulb head, watching the field.
+  setBlock(dimension, x - half + 1, y + 1, z - half + 1, P.wood);
+  setBlock(dimension, x - half + 1, y + 2, z - half + 1, P.wood);
+  setBlock(dimension, x - half + 1, y + 3, z - half + 1, P.bulb);
+}
+
+/**
+ * A copper bridge: a span of cut copper on brick piers, with copper bars for a
+ * rail. It is laid across a gap in the terrain — a ravine or a river — so the
+ * surface has a landmark that is a route, not just a building.
+ */
+function buildBridge(dimension, x, y, z) {
+  const length = 9;
+  const deck = y;
+  // Two piers, then a flat deck between them.
+  for (const px of [x - length, x + length]) {
+    for (let dy = 0; dy >= -6; dy--) {
+      fillBox(dimension, px - 1, deck + dy, z - 1, px + 1, deck + dy, z + 1, P.bricks);
+    }
+    addLantern(dimension, px, deck + 3, z - 1);
+    addLantern(dimension, px, deck + 3, z + 1);
+  }
+  fillBox(dimension, x - length, deck, z - 1, x + length, deck, z + 1, P.cut);
+  // A copper-bar rail along both sides, broken at the piers.
+  for (let dx = -length + 1; dx <= length - 1; dx++) {
+    setBlock(dimension, x + dx, deck + 1, z - 2, P.bars);
+    setBlock(dimension, x + dx, deck + 1, z + 2, P.bars);
+  }
+  // A lamp at the midpoint so the crossing is lit.
+  addLantern(dimension, x, deck + 3, z);
+  setBlock(dimension, x, deck + 1, z - 1, P.bulb);
+  setBlock(dimension, x, deck + 1, z + 1, P.bulb);
+}
+
+/**
+ * An observatory: a domed copper tower with a lantern aperture aimed at the sky.
+ * The tallest of the surface builds, it is a landmark and a lookout — from its
+ * gallery a player can see the copper country stretch away.
+ */
+function buildObservatory(dimension, x, y, z) {
+  const radius = 4;
+  const height = 10;
+  // A round tower shell, hollow, with a doorway.
+  for (let dy = 0; dy < height; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      for (let dz = -radius; dz <= radius; dz++) {
+        const d = Math.sqrt(dx * dx + dz * dz);
+        if (d > radius) continue;
+        const edge = d > radius - 1;
+        const doorway = dx === 0 && dz === radius && dy < 3;
+        setBlock(dimension, x + dx, y + dy, z + dz, edge && !doorway ? (dy % 4 < 2 ? P.cut : P.weatheredCut) : P.air);
+      }
+    }
+  }
+  // The dome: a stepped cap of chiselled copper, open at the top.
+  for (let dy = height; dy <= height + 3; dy++) {
+    const r = radius - (dy - height);
+    if (r < 0) continue;
+    for (let dx = -r; dx <= r; dx++) {
+      for (let dz = -r; dz <= r; dz++) {
+        const d = Math.sqrt(dx * dx + dz * dz);
+        if (d > r) continue;
+        const edge = d > r - 1;
+        // The aperture: leave the top ring's +x quadrant open, aimed at the sky.
+        const aperture = dy === height + 3 && dx >= 0;
+        if (edge && !aperture) setBlock(dimension, x + dx, y + dy, z + dz, P.chiseled);
+      }
+    }
+  }
+  // A spiral of floors and lamps up the inside.
+  for (let dy = 3; dy < height; dy += 3) {
+    fillBox(dimension, x - radius + 1, y + dy, z - radius + 1, x + radius - 1, y + dy, z + radius - 1, P.cutSlab);
+    setBlock(dimension, x, y + dy, z, P.air);
+    addLantern(dimension, x + radius - 1, y + dy + 2, z);
+  }
+  setBlock(dimension, x, y + height - 1, z, P.bulb);
+  placeChestAt(dimension, x, y + 3 + 1, z, x, z);
+}
+
+/**
  * A standing portal: a copper frame holding the dimension's portal blocks, ready
  * to walk into. Only built where the column above is clear, so it never buries
  * itself in a hillside.
@@ -570,17 +864,20 @@ function gatherChest(tileX, tileZ) {
   const cellX = Math.floor(tileX / CHEST_REGION);
   const cellZ = Math.floor(tileZ / CHEST_REGION);
   if (tileX !== cellX * CHEST_REGION || tileZ !== cellZ * CHEST_REGION) return null;
-  if (random(cellX, cellZ, SALT_CHEST) >= CHEST_CHANCE) return null;
 
-  // Offset from the cell's build anchor, so a chest never lands on top of the
-  // pack build that may share the cell.
-  const x = cellX * CHEST_REGION * 16 + 24;
-  const z = cellZ * CHEST_REGION * 16 + 24;
+  const chest = chestAt(cellX, cellZ);
+  if (!chest) return null;
   return (dimension) => {
-    const y = groundY(dimension, x, z);
+    const y = groundY(dimension, chest.x, chest.z);
     if (y === undefined) return;
-    placeChestAt(dimension, x, y, z, cellX, cellZ);
+    placeChestAt(dimension, chest.x, y, chest.z, cellX, cellZ);
   };
+}
+
+/** The plan of a chest cell, as a pure function of its coordinates. */
+export function chestAt(cellX, cellZ) {
+  if (random(cellX, cellZ, SALT_CHEST) >= CHEST_CHANCE) return null;
+  return { x: cellX * CHEST_REGION * 16 + 24, z: cellZ * CHEST_REGION * 16 + 24 };
 }
 
 /** The small pack build, one per REGION cell, attempted from its anchor tile. */
@@ -589,14 +886,26 @@ function gatherBuild(tileX, tileZ) {
   const regionZ = Math.floor(tileZ / REGION);
   if (tileX !== regionX * REGION || tileZ !== regionZ * REGION) return null;
 
-  if (random(regionX, regionZ, 0x11) >= BUILD_CHANCE) return null;
-  const x = regionX * REGION * 16 + 8;
-  const z = regionZ * REGION * 16 + 8;
-  const id = pick(BUILDS, regionX, regionZ, 0x31);
+  const build = buildAt(regionX, regionZ);
+  if (!build) return null;
   return (dimension) => {
-    const y = groundY(dimension, x, z);
+    const y = groundY(dimension, build.x, build.z);
     if (y === undefined) return;
-    placeBuild(dimension, id, x, y, z);
+    placeBuild(dimension, build.id, build.x, y, build.z);
+  };
+}
+
+/*
+ * The plan of a build cell, with no block reads: the decision is a function of
+ * the cell's coordinates and the world seed alone. `/locate` calls this too, so
+ * the command and the generator can never disagree about where a build is.
+ */
+export function buildAt(regionX, regionZ) {
+  if (random(regionX, regionZ, 0x11) >= BUILD_CHANCE) return null;
+  return {
+    id: pick(BUILDS, regionX, regionZ, 0x31),
+    x: regionX * REGION * 16 + 8,
+    z: regionZ * REGION * 16 + 8,
   };
 }
 
@@ -606,7 +915,11 @@ function gatherBuild(tileX, tileZ) {
  * rather than placed on it. A treasure vault is not part of this roll: it is
  * offered separately and far more rarely, so it stays a genuine find.
  */
-const LANDMARKS = ["village", "shelter", "trial_chambers", "ancient_city"];
+const LANDMARKS = [
+  "village", "shelter", "trial_chambers", "ancient_city",
+  "lighthouse", "farmstead", "bridge", "observatory",
+  "mine_shaft", "geode", "collapsed_mine",
+];
 const TREASURE_VAULT_CHANCE = 0.04;
 
 /*
@@ -625,46 +938,113 @@ function gatherLandmark(tileX, tileZ) {
   if (tileX !== cellX * LANDMARK_REGION || tileZ !== cellZ * LANDMARK_REGION) return null;
   landmarkDone.add(id);
 
-  if (random(cellX, cellZ, SALT_LANDMARK) >= LANDMARK_CHANCE) return null;
+  const plan = landmarkAt(cellX, cellZ);
+  if (!plan) return null;
+  const { x, z } = plan;
+  const kind = plan.kind;
 
-  const x = cellX * LANDMARK_REGION * 16 + 8;
-  const z = cellZ * LANDMARK_REGION * 16 + 8;
-
-  // The vault takes the cell on its own rare roll, before the usual landmark.
-  if (random(cellX, cellZ, SALT_VAULT) < TREASURE_VAULT_CHANCE) {
-    const vy = STONE_BOTTOM + 24;
-    return (dimension) => {
-      try {
-        buildTreasureVault(dimension, x, vy, z);
-      } catch (error) {
-        console.warn(`[copper] treasure vault failed at ${x},${z}: ${error}`);
-      }
-    };
-  }
-
-  const kind = pick(LANDMARKS, cellX, cellZ, 0x42);
   return (dimension) => {
-    const surface = groundY(dimension, x, z);
-    if (surface === undefined) return;
     try {
       switch (kind) {
+        case "treasure_vault":
+          buildTreasureVault(dimension, x, LANDMARK_DEPTH.treasure_vault, z);
+          break;
         case "village":
-          buildVillage(dimension, x, surface, z);
+          withSurface(dimension, x, z, (surface) => buildVillage(dimension, x, surface, z));
           break;
         case "shelter":
-          buildShelter(dimension, x, surface, z);
+          withSurface(dimension, x, z, (surface) => buildShelter(dimension, x, surface, z));
+          break;
+        case "lighthouse":
+          // A lighthouse only makes sense at the water's edge, so the shore is
+          // found first and the build is skipped if there is none.
+          withShore(dimension, x, z, (shore) => buildLighthouse(dimension, x, shore, z));
+          break;
+        case "farmstead":
+          withSurface(dimension, x, z, (surface) => buildFarmstead(dimension, x, surface, z));
+          break;
+        case "bridge":
+          withSurface(dimension, x, z, (surface) => buildBridge(dimension, x, surface, z));
+          break;
+        case "observatory":
+          withSurface(dimension, x, z, (surface) => buildObservatory(dimension, x, surface, z));
+          break;
+        case "mine_shaft":
+          // The shaft is hung from the surface so its headframe pokes out of the
+          // ground and its ladder reaches down into the caves below.
+          withSurface(dimension, x, z, (surface) => buildMineShaft(dimension, x, surface, z));
           break;
         case "trial_chambers":
-          buildTrialChambers(dimension, x, STONE_BOTTOM + 18, z);
+          buildTrialChambers(dimension, x, LANDMARK_DEPTH.trial_chambers, z);
           break;
         case "ancient_city":
-          buildAncientCity(dimension, x, STONE_BOTTOM + 2, z);
+          buildAncientCity(dimension, x, LANDMARK_DEPTH.ancient_city, z);
+          break;
+        case "geode":
+          buildGeode(dimension, x, LANDMARK_DEPTH.geode, z);
+          break;
+        case "collapsed_mine":
+          buildCollapsedMine(dimension, x, LANDMARK_DEPTH.collapsed_mine, z);
           break;
       }
     } catch (error) {
       console.warn(`[copper] landmark "${kind}" failed at ${x},${z}: ${error}`);
     }
   };
+}
+
+/*
+ * What one landmark cell holds, decided with no block reads so `/locate` can
+ * predict it from the coordinates alone. It returns the vault, or the landmark
+ * kind together with its anchor and the Y it is raised at — the same numbers the
+ * switch above builds from.
+ */
+export function landmarkAt(cellX, cellZ) {
+  if (random(cellX, cellZ, SALT_LANDMARK) >= LANDMARK_CHANCE) return null;
+
+  const x = cellX * LANDMARK_REGION * 16 + 8;
+  const z = cellZ * LANDMARK_REGION * 16 + 8;
+
+  if (random(cellX, cellZ, SALT_VAULT) < TREASURE_VAULT_CHANCE) {
+    return { kind: "treasure_vault", x, z, y: LANDMARK_DEPTH.treasure_vault };
+  }
+
+  const kind = pick(LANDMARKS, cellX, cellZ, 0x42);
+  // Surface builds have no fixed Y; the search fills it in from the ground.
+  const y = LANDMARK_DEPTH[kind];
+  return { kind, x, z, y };
+}
+
+/** Every landmark kind `/locate` can search for, vault included. */
+export const LANDMARK_KINDS = ["village", "shelter", "lighthouse", "farmstead", "bridge", "observatory", "mine_shaft", "trial_chambers", "ancient_city", "geode", "collapsed_mine", "treasure_vault"];
+
+/** Runs `build` with the surface height of a column, or skips if it is unusable. */
+function withSurface(dimension, x, z, build) {
+  const surface = groundY(dimension, x, z);
+  if (surface === undefined) return;
+  build(surface);
+}
+
+/**
+ * Runs `build` with the height of beach ground at or just above sea level near a
+ * column. A lighthouse needs water beside it to be a lighthouse; if the search
+ * finds no shore within its range the build is simply skipped, which is cheaper
+ * than raising a tower in the middle of a plain.
+ */
+function withShore(dimension, x, z, build) {
+  for (let r = 0; r <= 12; r += 3) {
+    for (let dx = -r; dx <= r; dx += 3) {
+      for (let dz = -r; dz <= r; dz += 3) {
+        const top = dimension.getTopmostBlock({ x: x + dx, z: z + dz });
+        if (!top) continue;
+        const y = top.location.y + 1;
+        if (y <= SEA_LEVEL + 1 && y > SEA_LEVEL - 4) {
+          build(y);
+          return;
+        }
+      }
+    }
+  }
 }
 
 /** A rare standing portal, one per landmark cell, at most. */

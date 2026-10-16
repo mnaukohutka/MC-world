@@ -302,3 +302,5 @@ item.spawn_egg.entity.pa:copper_jelly.name=Spawn Copper Jelly
 entity.pa:copper_villager.name=Copper Miner
 item.spawn_egg.entity.pa:copper_villager.name=Spawn Copper Miner
 entity.pa:copper_villager.miner=Copper Miner
+entity.pa:copper_ghost.name=Happy Ghost
+item.spawn_egg.entity.pa:copper_ghost.name=Spawn Happy Ghost
