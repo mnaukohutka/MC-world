@@ -13,7 +13,6 @@
     "sound": "stone"
   },
   "pa:fluid_copper_oxidized": {
-    "textures": "pa_fluid_copper_oxidized",
     "sound": "slime"
   },
   "pa:copper_stone": {

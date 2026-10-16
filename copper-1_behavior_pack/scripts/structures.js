@@ -1,4 +1,4 @@
-import { world } from "@minecraft/server";
+import { world, system, ItemStack } from "@minecraft/server";
 
 /*
  * Points of interest for the Copper Dimension.
@@ -20,6 +20,11 @@ const VILLAGE_CHANCE = 0.18;
 const SPECIAL_CHANCE = 0.22;
 const CHEST_CHANCE = 0.05;
 
+/* The dimension floor/ceiling, used to reject builds that would leave them. */
+const WORLD_MIN_Y = -64;
+const WORLD_MAX_Y = 320;
+const BUILD_CLEARANCE = 40;
+
 /** The pack's own builds. Vanilla camps have no reachable structure id, so the
  * copper builds double as the dimension's landmarks. */
 const BUILDS = [
@@ -35,9 +40,9 @@ const BUILDS = [
 const VILLAGE_BUILD = "copper_temple";
 
 const SALT_CHEST = 0x9e37;
+const SALT_LOOT = 0x4d2a;
 
 const done = new Set();
-const planned = new Set();
 let seed = 0;
 
 function key(x, z) {
@@ -53,7 +58,6 @@ export function seedPoints(worldSeed) {
   }
   seed = h | 0;
   done.clear();
-  planned.clear();
 }
 
 function random(x, z, salt) {
@@ -77,7 +81,16 @@ function rotationFor(x, z) {
 function groundY(dimension, x, z) {
   try {
     const top = dimension.getTopmostBlock({ x, z });
-    return top ? top.location.y + 1 : undefined;
+    if (!top) return undefined;
+    const y = top.location.y + 1;
+    /*
+     * `getTopmostBlock` reports the build ceiling for a column that is still
+     * unloaded, and `StructureManager.place` rejects any volume leaving the
+     * world bounds — which is what produced "Invalid structure bounds". Reject
+     * anything too close to the ceiling and let the tile regenerate later.
+     */
+    if (y <= WORLD_MIN_Y + 1 || y > WORLD_MAX_Y - BUILD_CLEARANCE) return undefined;
+    return y;
   } catch {
     return undefined;
   }
@@ -94,26 +107,94 @@ function placeBuild(dimension, id, x, y, z) {
   }
 }
 
+/**
+ * Loot pool for the scattered copper chests. Copper is common; the rest is the
+ * usual chest fare, weighted so most chests hold a handful of useful things and
+ * only occasionally something worth a trip.
+ */
+const LOOT = [
+  { item: "minecraft:copper_ingot", min: 2, max: 6, weight: 10 },
+  { item: "minecraft:raw_copper", min: 2, max: 8, weight: 8 },
+  { item: "minecraft:copper_nugget", min: 3, max: 9, weight: 6 },
+  { item: "minecraft:copper_block", min: 1, max: 2, weight: 4 },
+  { item: "minecraft:cut_copper", min: 1, max: 3, weight: 3 },
+  { item: "minecraft:copper_lantern", min: 1, max: 2, weight: 3 },
+  { item: "minecraft:copper_chain", min: 1, max: 4, weight: 3 },
+  { item: "minecraft:copper_grate", min: 1, max: 3, weight: 3 },
+  { item: "minecraft:copper_bulb", min: 1, max: 2, weight: 2 },
+  { item: "minecraft:iron_ingot", min: 1, max: 4, weight: 4 },
+  { item: "minecraft:gold_ingot", min: 1, max: 3, weight: 2 },
+  { item: "minecraft:emerald", min: 1, max: 2, weight: 2 },
+  { item: "minecraft:diamond", min: 1, max: 1, weight: 1 },
+  { item: "minecraft:bread", min: 1, max: 4, weight: 4 },
+  { item: "minecraft:torch", min: 2, max: 6, weight: 4 },
+];
+
+const LOOT_WEIGHT = LOOT.reduce((sum, entry) => sum + entry.weight, 0);
+
+/** Deterministically fills a chest block so everyone sees the same contents. */
+function fillChest(dimension, x, y, z, salt) {
+  const chest = dimension.getBlock({ x, y, z });
+  const inventory = chest?.getComponent("minecraft:inventory")?.container;
+  if (!inventory) return;
+
+  const rolls = 2 + Math.floor(random(x + salt, z - salt, SALT_LOOT) * 4);
+  const used = new Set();
+  for (let i = 0; i < rolls; i++) {
+    let ticket = random(x * 3 + i, z * 5 - i, SALT_LOOT + i) * LOOT_WEIGHT;
+    const entry = LOOT.find((candidate) => (ticket -= candidate.weight) <= 0) ?? LOOT[0];
+    const count = entry.min + Math.floor(random(x - i, z + i, SALT_LOOT + i) * (entry.max - entry.min + 1));
+    // Slots are chosen by the same noise, so no slot gets the same roll twice.
+    let slot = Math.floor(random(x + i * 7, z + i * 13, SALT_LOOT + i * 3) * inventory.size) % inventory.size;
+    while (used.has(slot) && used.size < inventory.size) slot = (slot + 1) % inventory.size;
+    if (used.has(slot) || inventory.getItem(slot)) continue;
+    used.add(slot);
+    try {
+      inventory.setItem(slot, new ItemStack(entry.item, count));
+    } catch {
+      // An item this build does not know is simply left out.
+    }
+  }
+}
+
 function placeChest(dimension, x, y, z) {
   try {
     dimension.getBlock({ x, y, z })?.setType("minecraft:copper_chest");
   } catch {
     // Chunk left the loading window; the terrain pass rebuilds the tile later.
+    return;
   }
+  /*
+   * The container is not attached until the block settles, so the fill is put
+   * off a tick. It runs once per chest; a chest that never loads simply stays
+   * empty rather than erroring.
+   */
+  system.run(() => {
+    try {
+      fillChest(dimension, x, y, z, Math.floor(random(x, z, 0x41) * 1000));
+    } catch {
+      // The chunk unloaded again before the fill; leave the chest as it is.
+    }
+  });
 }
 
 function populate(dimension, tileX, tileZ) {
   const regionX = Math.floor(tileX / REGION);
   const regionZ = Math.floor(tileZ / REGION);
-  const regionKey = key(regionX, regionZ);
+  const anchorX = regionX * REGION * 16 + 8;
+  const anchorZ = regionZ * REGION * 16 + 8;
 
-  if (!planned.has(regionKey)) {
-    planned.add(regionKey);
+  /*
+   * A region's build belongs at its anchor, but an anchor usually sits in a
+   * tile other than the one currently generating — and `getTopmostBlock` over a
+   * column that is not loaded reports the build ceiling, which is what made
+   * `StructureManager.place` fail with "Invalid structure bounds". So the build
+   * is only attempted from the tile that actually contains the anchor, where the
+   * ground is loaded by the time this runs. That fires exactly once per region.
+   */
+  if (tileX === regionX * REGION && tileZ === regionZ * REGION) {
     const roll = random(regionX, regionZ, 0x11);
-    const anchorX = regionX * REGION * 16 + 8;
-    const anchorZ = regionZ * REGION * 16 + 8;
     const y = groundY(dimension, anchorX, anchorZ);
-
     if (y !== undefined) {
       if (roll < VILLAGE_CHANCE) {
         placeBuild(dimension, VILLAGE_BUILD, anchorX, y, anchorZ);

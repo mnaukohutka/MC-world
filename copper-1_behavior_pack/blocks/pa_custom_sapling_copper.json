@@ -91,7 +91,13 @@
           }
         ]
       },
-      "minecraft:random_ticking": {},
+      "minecraft:tick": {
+        "interval_range": [
+          40,
+          120
+        ],
+        "looping": true
+      },
       "pa_custom_sapling_copper:trigger": {}
     }
   }

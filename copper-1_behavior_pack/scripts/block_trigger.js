@@ -28,15 +28,17 @@ onStepOff: e => { e.entity.addEffect("minecraft:hunger", 1400.0, { amplifier: 1 
 });
 
 initEvent.blockComponentRegistry.registerCustomComponent('pa_custom_sapling_copper:trigger', {
-  /*
-   * Growth rides the block's `minecraft:random_ticking` component. The hook
-   * itself was fine before; the block simply never had anything to raise a
-   * random tick, so the sapling sat there forever.
-   */
-  onRandomTick: e => {
-    growSapling(e.block, e.dimension);
-  },
-  onPlayerInteract: e => {
+    /*
+     * Growth rides the block's `minecraft:tick` component. `minecraft:random_ticking`
+     * - and with it `onRandomTick` - is gone from the block format, so the modern
+     * `onTick` hook is what keeps the sapling growing. It rolls on every tick the
+     * block is scheduled for, so growth is not guaranteed on the first tick.
+     */
+    onTick: e => {
+      if (Math.random() > 0.2) return;
+      growSapling(e.block, e.dimension);
+    },
+    onPlayerInteract: e => {
     const { block, dimension, player } = e;
     if (!player) return;
 
