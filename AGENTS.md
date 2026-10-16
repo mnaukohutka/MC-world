@@ -124,3 +124,14 @@ metadata/json_schemas/server/block/<ver>/.
   duplicate-recipe warning and only one wins. Give a custom recipe its own
   ingredients rather than reusing a vanilla pattern (e.g. patina from oxidized
   copper *grate*, not the plain oxidized copper that already makes cut copper).
+- Script-driven terrain must finish a tile's *neighbourhood* before it raises
+  anything that spans tiles. `buildTile` writes whole columns from `MIN_Y` to
+  `MAX_Y`, so a landmark placed the moment its own tile finished was ploughed
+  through by the next tile's column work — the dimension looked almost empty
+  while the builders themselves worked. The queue now lays plain ground first,
+  and only calls `buildTileContent` (landmarks, pack builds, chests, portals) and
+  `decorateTile` (biome ground cover) once all nine tiles of the 3x3 are
+  `generated`. Any build whose footprint is larger than one tile needs this.
+- `groundY` uses `dimension.getTopmostBlock`, which reports the *build* ceiling
+  for a still-unloaded column. Structures placed from that height land at y=320
+  and vanish. Keep the ceiling rejection in `groundY`.
