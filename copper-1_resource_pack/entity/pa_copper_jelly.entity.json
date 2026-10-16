@@ -19,8 +19,8 @@
         ]
       },
       "animations": {
-        "move": "animation.squid.move",
-        "squid_rotate": "animation.squid.rotate"
+        "move": "animation.pa_jelly.move",
+        "squid_rotate": "animation.pa_jelly.rotate"
       },
       "render_controllers": [
         "controller.render.default"

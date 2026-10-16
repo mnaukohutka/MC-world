@@ -68,20 +68,17 @@
         "value": 32,
         "max": 32
       },
-      "minecraft:behavior.squid_idle": {
-        "priority": 2
+      "minecraft:behavior.random_swim": {
+        "priority": 4,
+        "interval": 0,
+        "xz_dist": 16,
+        "y_dist": 4,
+        "speed_multiplier": 1
       },
-      "minecraft:behavior.squid_flee": {
-        "priority": 2
-      },
-      "minecraft:behavior.squid_dive": {
-        "priority": 2
-      },
-      "minecraft:behavior.squid_move_away_from_ground": {
-        "priority": 1
-      },
-      "minecraft:behavior.squid_out_of_water": {
-        "priority": 2
+      "minecraft:behavior.look_at_player": {
+        "priority": 7,
+        "look_distance": 8,
+        "probability": 0.02
       },
       "minecraft:despawn": {
         "despawn_from_distance": {}

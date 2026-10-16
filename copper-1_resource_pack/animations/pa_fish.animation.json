@@ -1,0 +1,33 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.pa_fish.flop": {
+      "loop": true,
+      "bones": {
+        "body": {
+          "rotation": [ 0.0, "math.cos(query.anim_time * 90.0) * 2.0", "math.cos(query.anim_time * 90.0) * 90.0" ]
+        },
+        "head": {
+          "rotation": [ 0.0, "math.cos(query.anim_time * 90.0) * 4.0", 0.0 ]
+        },
+        "tailfin": {
+          "rotation": [ 0.0, "math.cos(query.anim_time * 90.0) * -25.75", 0.0 ]
+        }
+      }
+    },
+    "animation.pa_fish.swim": {
+      "loop": true,
+      "bones": {
+        "body": {
+          "rotation": [ 0.0, "math.cos(query.anim_time * 60.0) * 2.0", 0.0 ]
+        },
+        "head": {
+          "rotation": [ 0.0, "math.cos(query.anim_time * 60.0) * 4.0", 0.0 ]
+        },
+        "tailfin": {
+          "rotation": [ 0.0, "math.cos(query.anim_time * 60.0) * -25.75", 0.0 ]
+        }
+      }
+    }
+  }
+}
