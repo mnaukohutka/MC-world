@@ -8,9 +8,16 @@ import { world, system } from "@minecraft/server";
  * pack ships spawns by itself. This module is the replacement — a short roll
  * around each player, biased to the pack's own mobs.
  *
- * The copper workers arrive by their own element: bees in the air, fish in the
- * water, moles under the ground, keepers on the land. Each is placed where its
- * body can actually live, so none of them suffocates or drowns on arrival.
+ * The copper workers arrive by their own element, and each is placed where its
+ * body can actually live, so none of them suffocates or drowns on arrival:
+ *
+ *   dry land      keeper, shade (walkers)
+ *   open air      bee, bat (flyers), wisp (hoverer)
+ *   copper fluid  minnow (swimmer), fish in the deep, crab at the shore
+ *   under ground  mole, mite (burrowers)
+ *
+ * Walking and flying mobs are placed as small herds rather than one at a time,
+ * so the world reads as populated but the per-roll cost stays the same.
  */
 
 const COPPER_DIMENSION = "pa:copper_dimension";
@@ -19,6 +26,12 @@ const BEE = "pa:copper_bee";
 const FISH = "pa:copper_fish";
 const MOLE = "pa:copper_mole";
 const KEEPER = "pa:copper_keeper";
+const MINNOW = "pa:copper_minnow";
+const CRAB = "pa:copper_crab";
+const SHADE = "pa:copper_shade";
+const BAT = "pa:copper_bat";
+const MITE = "pa:copper_mite";
+const WISP = "pa:copper_wisp";
 
 /* The dimension stays mostly peaceful; the golem is the old pack resident and
  * a rare creeper keeps the caves from being entirely safe. */
@@ -27,9 +40,13 @@ const CREEPER = "minecraft:creeper";
 
 const SPAWN_RADIUS = 32;
 const MIN_DISTANCE = 14;
-const MAX_NEARBY = 20;
+const MAX_NEARBY = 24;
 
+/** The pack's own fluid, in both oxidation stages. */
+const COPPER_FLUID = new Set(["pa:fluid_copper", "pa:fluid_copper_oxidized"]);
 const WATER = new Set(["minecraft:water", "minecraft:flowing_water"]);
+const ANY_FLUID = new Set([...COPPER_FLUID, ...WATER]);
+
 const SOFT_GROUND = new Set([
   "pa:copper_stone",
   "pa:copper_soil",
@@ -39,6 +56,9 @@ const SOFT_GROUND = new Set([
   "minecraft:stone",
   "minecraft:deepslate",
 ]);
+
+/** Mobs that cannot stand on the surface and must be placed in open air. */
+const FLYERS = new Set([BEE, BAT, WISP]);
 
 system.runInterval(() => {
   for (const player of world.getPlayers()) {
@@ -67,22 +87,33 @@ function trySpawn(player) {
   const ground = dimension.getBlock(surface.location);
   if (!ground || ground.isAir) return;
 
-  const roll = Math.random();
-  if (WATER.has(ground.typeId)) {
-    // A column the player stands beside is the only place a fish can be placed
-    // without guessing where the water body is.
-    spawnInWater(dimension, x, surface.location.y, z);
+  // A fluid column is read first: everything below the surface is that fluid,
+  // which is where the swimmers and the shore crab belong.
+  if (ANY_FLUID.has(ground.typeId)) {
+    if (COPPER_FLUID.has(ground.typeId)) spawnSchool(dimension, x, surface.location.y, z, MINNOW);
+    else spawnSchool(dimension, x, surface.location.y, z, FISH);
+    if (Math.random() < 0.35) spawnShore(dimension, x, surface.location.y, z);
     return;
   }
 
-  if (roll < 0.3) {
-    spawnFlying(dimension, x, surface.location.y, z);
-  } else if (roll < 0.5) {
-    spawnWalker(dimension, x, surface.location.y, z);
-  } else if (roll < 0.68 && SOFT_GROUND.has(ground.typeId)) {
-    spawnBurrower(dimension, x, surface.location.y, z);
-  } else if (roll < 0.8) {
-    spawnFlying(dimension, x, surface.location.y, z);
+  const roll = Math.random();
+  if (roll < 0.2) {
+    spawnHerd(dimension, x, surface.location.y, z, BEE, 3);
+  } else if (roll < 0.34) {
+    spawnHerd(dimension, x, surface.location.y, z, KEEPER, 2);
+  } else if (roll < 0.44 && SOFT_GROUND.has(ground.typeId)) {
+    spawnBurrower(dimension, x, surface.location.y, z, MOLE);
+  } else if (roll < 0.54 && SOFT_GROUND.has(ground.typeId)) {
+    spawnBurrower(dimension, x, surface.location.y, z, MITE);
+  } else if (roll < 0.64) {
+    spawnHerd(dimension, x, surface.location.y, z, BAT, 2);
+  } else if (roll < 0.72) {
+    spawnHerd(dimension, x, surface.location.y, z, BEE, 3);
+  } else if (roll < 0.78) {
+    spawnHerd(dimension, x, surface.location.y, z, WISP, 2);
+  } else if (roll < 0.84) {
+    // The shade is deliberately rarer than the keeper: light should mostly win.
+    spawnHerd(dimension, x, surface.location.y, z, SHADE, 1);
   } else if (roll < 0.95) {
     spawnEntity(dimension, COPPER_GOLEM, { x: x + 0.5, y: surface.location.y + 1, z: z + 0.5 });
   } else {
@@ -95,35 +126,53 @@ function spawnEntity(dimension, typeId, at) {
   dimension.spawnEntity(typeId, at);
 }
 
-function spawnFlying(dimension, x, y, z) {
-  const at = { x: x + 0.5, y: y + 3, z: z + 0.5 };
-  if (!isAirAt(dimension, at)) return;
-  dimension.spawnEntity(BEE, at);
+/** A small cluster of a ground or flying mob, scattered a block or two apart. */
+function spawnHerd(dimension, x, y, z, typeId, count) {
+  for (let i = 0; i < count; i++) {
+    const ox = Math.floor((Math.random() - 0.5) * 3);
+    const oz = Math.floor((Math.random() - 0.5) * 3);
+    const height = FLYERS.has(typeId) ? 3 : 1;
+    const at = { x: x + ox + 0.5, y: y + height, z: z + oz + 0.5 };
+    if (!isAirAt(dimension, at)) continue;
+    dimension.spawnEntity(typeId, at);
+  }
 }
 
-function spawnWalker(dimension, x, y, z) {
-  const at = { x: x + 0.5, y: y + 1, z: z + 0.5 };
-  if (!isAirAt(dimension, at)) return;
-  dimension.spawnEntity(KEEPER, at);
+/** A shoal of up to four swimmers in the fluid column below the surface. */
+function spawnSchool(dimension, x, y, z, typeId) {
+  const count = 1 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < count; i++) {
+    const ox = Math.floor((Math.random() - 0.5) * 4);
+    const oz = Math.floor((Math.random() - 0.5) * 4);
+    for (let dy = -1; dy > -8; dy--) {
+      const at = { x: x + ox + 0.5, y: y + dy, z: z + oz + 0.5 };
+      const block = dimension.getBlock({ x: Math.floor(at.x), y: Math.floor(at.y), z: Math.floor(at.z) });
+      if (!block || !ANY_FLUID.has(block.typeId)) break;
+      dimension.spawnEntity(typeId, at);
+      break;
+    }
+  }
 }
 
-function spawnBurrower(dimension, x, y, z) {
-  // One block into the ground, which is where a mole belongs.
+/** A crab on the first solid block beside the fluid, if there is one. */
+function spawnShore(dimension, x, y, z) {
+  for (const [ox, oz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const at = { x: x + ox + 0.5, y, z: z + oz + 0.5 };
+    const block = dimension.getBlock({ x: x + ox, y: Math.floor(y), z: z + oz });
+    if (block && !block.isAir && !ANY_FLUID.has(block.typeId) && isAirAt(dimension, at)) {
+      dimension.spawnEntity(CRAB, at);
+      return;
+    }
+  }
+}
+
+function spawnBurrower(dimension, x, y, z, typeId) {
+  // One block into the ground, which is where a mole or a mite belongs.
   const at = { x: x + 0.5, y, z: z + 0.5 };
   const block = dimension.getBlock({ x, y: Math.floor(y), z });
   if (!block || block.isAir) return;
   block.setType("minecraft:air");
-  dimension.spawnEntity(MOLE, at);
-}
-
-function spawnInWater(dimension, x, y, z) {
-  for (let dy = 0; dy > -6; dy--) {
-    const at = { x: x + 0.5, y: y + dy, z: z + 0.5 };
-    const block = dimension.getBlock({ x, y: Math.floor(at.y), z });
-    if (!block || !WATER.has(block.typeId)) break;
-    dimension.spawnEntity(FISH, at);
-    return;
-  }
+  dimension.spawnEntity(typeId, at);
 }
 
 function isAirAt(dimension, at) {
@@ -143,4 +192,4 @@ function nearbyCount(dimension, location) {
 
 // Referenced so the allow-list stays visible: villagers arrive with the village
 // build; these constants document that nothing else is meant to spawn.
-export const POPULATION = [BEE, FISH, MOLE, KEEPER, COPPER_GOLEM, CREEPER];
+export const POPULATION = [BEE, FISH, MOLE, KEEPER, MINNOW, CRAB, SHADE, BAT, MITE, WISP, COPPER_GOLEM, CREEPER];

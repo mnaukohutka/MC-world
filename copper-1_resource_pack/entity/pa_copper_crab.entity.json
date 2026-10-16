@@ -1,0 +1,19 @@
+{
+  "format_version": "1.8.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "pa:copper_crab",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/entity/pa_mobs/copper_crab" },
+      "geometry": { "default": "geometry.silverfish" },
+      "scripts": {
+        "animate": [ "move" ]
+      },
+      "animations": {
+        "move": "animation.silverfish.move"
+      },
+      "render_controllers": [ "controller.render.default" ],
+      "spawn_egg": { "base_color": "#e6783c", "overlay_color": "#7a3a1c" }
+    }
+  }
+}

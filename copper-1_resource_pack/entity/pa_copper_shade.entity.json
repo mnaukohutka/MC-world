@@ -1,0 +1,25 @@
+{
+  "format_version": "1.8.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "pa:copper_shade",
+      "materials": { "default": "villager" },
+      "textures": { "default": "textures/entity/pa_mobs/copper_shade" },
+      "geometry": { "default": "geometry.villager.v1.8" },
+      "scripts": {
+        "scale": "0.9375"
+      },
+      "animations": {
+        "general": "animation.villager.general.v1.0",
+        "look_at_target": "animation.common.look_at_target",
+        "move": "animation.villager.move"
+      },
+      "animation_controllers": [
+        { "general": "controller.animation.villager.general" },
+        { "move": "controller.animation.villager.move" }
+      ],
+      "render_controllers": [ "controller.render.default" ],
+      "spawn_egg": { "base_color": "#3c1e5a", "overlay_color": "#12100a" }
+    }
+  }
+}

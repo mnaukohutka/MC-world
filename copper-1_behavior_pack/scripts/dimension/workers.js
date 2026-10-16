@@ -27,7 +27,10 @@ const BEE = "pa:copper_bee";
 const FISH = "pa:copper_fish";
 const MOLE = "pa:copper_mole";
 const KEEPER = "pa:copper_keeper";
-const WORKERS = new Set([BEE, FISH, MOLE, KEEPER]);
+const MINNOW = "pa:copper_minnow";
+const CRAB = "pa:copper_crab";
+const SHADE = "pa:copper_shade";
+const WORKERS = new Set([BEE, FISH, MOLE, KEEPER, MINNOW, CRAB, SHADE]);
 
 const SENSE_INTERVAL = 60;    // ticks between a worker's turns (3 s)
 const SENSE_RADIUS = 8;       // blocks a worker can see
@@ -93,9 +96,12 @@ system.runInterval(() => {
 function act(worker, dimension) {
   switch (worker.typeId) {
     case BEE: return beeWork(worker, dimension);
-    case FISH: return fishWork(worker, dimension);
+    case FISH:
+    case MINNOW: return fishWork(worker, dimension);
     case MOLE: return moleWork(worker, dimension);
+    case CRAB: return crabWork(worker, dimension);
     case KEEPER: return keeperWork(worker, dimension);
+    case SHADE: return shadeWork(worker, dimension);
     default: return undefined;
   }
 }
@@ -187,6 +193,73 @@ function moleWork(worker, dimension) {
     drop.applyImpulse({ x: 0, y: 0.1, z: 0 });
   } catch {
     // Impulses are best-effort; the item is already on the ground.
+  }
+}
+
+// ── Crab: tidy the shallows ─────────────────────────────────────────────────
+
+/*
+ * The crab is the fish's counterpart on the shore: it picks up loose copper
+ * that has washed into the shallows and buries it in the silt, and it clears
+ * stray saplings the tide has left in the water so they do not rot there.
+ */
+function crabWork(worker, dimension) {
+  const drop = nearestItem(worker, dimension);
+  if (drop) {
+    if (distance(worker.location, drop.location) > 2.0) return;
+    try {
+      drop.remove();
+      dimension.playSound("random.pop", drop.location, { pitch: 0.8, volume: 0.4 });
+    } catch {
+      // The item left the world first.
+    }
+    return;
+  }
+
+  // Look for a sapling that ended up submerged and pop it back onto dry ground.
+  const drowned = findBlock(dimension, worker.location, SENSE_RADIUS, (id) => id === SAPLING);
+  if (drowned) {
+    const wet = tryBlock(dimension, drowned);
+    if (wet) {
+      const over = dimension.getBlock({ x: drowned.x, y: drowned.y + 1, z: drowned.z });
+      if (over && (over.isLiquid || over.typeId === "minecraft:water")) {
+        safeSet(dimension, drowned, COPPER_SOIL);
+        dimension.spawnParticle("minecraft:basic_bubble_particle", above(drowned));
+        return;
+      }
+    }
+  }
+
+  wander(worker);
+}
+
+// ── Shade: the keeper's opposite ────────────────────────────────────────────
+
+/*
+ * The shade unwinds what the keeper does: it snuffs out any lit lamp or bulb it
+ * passes and pockets loose copper for itself rather than filing it away. A
+ * region with both a keeper and a shade therefore flickers — light where the
+ * keeper has just been, dark behind the shade — which is exactly the unsettled
+ * feel the copper country wants.
+ */
+function shadeWork(worker, dimension) {
+  const bulb = findBlock(dimension, worker.location, SENSE_RADIUS, (id) => id === BULB || id === LAMP);
+  if (bulb && isLitAny(dimension, bulb)) {
+    darken(dimension, bulb);
+    return;
+  }
+
+  const drop = nearestItem(worker, dimension);
+  if (!drop) {
+    wander(worker);
+    return;
+  }
+  if (distance(worker.location, drop.location) > 2.0) return;
+  try {
+    drop.remove();
+    dimension.playSound("random.pop", drop.location, { pitch: 0.7, volume: 0.4 });
+  } catch {
+    // The item left the world first.
   }
 }
 
@@ -365,6 +438,30 @@ function lightBulb(dimension, at) {
   }
 }
 
+/** True when the block is a lamp/bulb that is currently switched on. */
+function isLitAny(dimension, at) {
+  const block = tryBlock(dimension, at);
+  if (!block) return false;
+  if (block.typeId === LAMP) return isLit(dimension, at);
+  return isLitBulb(dimension, at);
+}
+
+/** Switches a lamp or bulb off, whichever it is. */
+function darken(dimension, at) {
+  const block = tryBlock(dimension, at);
+  if (!block) return;
+  try {
+    if (block.typeId === LAMP) {
+      block.setPermutation(block.permutation.withState("pa:lit", false));
+    } else {
+      block.setPermutation(block.permutation.withState("lit", false));
+    }
+    dimension.playSound("random.fizz", above(at), { pitch: 0.7, volume: 0.4 });
+  } catch {
+    // The block does not carry the state; nothing to darken.
+  }
+}
+
 function wander(worker) {
   // Motion is the navigation component's job; the brain only steers the facing
   // so an idle worker does not stare at one spot forever.
@@ -431,4 +528,4 @@ function spread(id) {
   return hash % SENSE_INTERVAL;
 }
 
-export const WORKER_TYPES = [BEE, FISH, MOLE, KEEPER];
+export const WORKER_TYPES = [BEE, FISH, MOLE, KEEPER, MINNOW, CRAB, SHADE];

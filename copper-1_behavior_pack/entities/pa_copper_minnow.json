@@ -1,0 +1,65 @@
+{
+  "format_version": "1.21.100",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "pa:copper_minnow",
+      "is_spawnable": true,
+      "is_summonable": true
+    },
+    "component_groups": {
+      "pa:despawn": {
+        "minecraft:instant_despawn": {}
+      }
+    },
+    "components": {
+      "minecraft:type_family": {
+        "family": [ "pa_worker", "pa_swimmer", "copper_minnow", "mob" ]
+      },
+      "minecraft:collision_box": { "width": 0.5, "height": 0.5 },
+      "minecraft:health": { "value": 6, "max": 6 },
+      "minecraft:movement": { "value": 0.12 },
+      "minecraft:underwater_movement": { "value": 0.12 },
+      "minecraft:navigation.generic": {
+        "can_breach": false,
+        "can_walk": false,
+        "can_path_over_water": false,
+        "can_sink": false,
+        "can_swim": true,
+        "is_amphibious": false,
+        "avoid_damage_blocks": true
+      },
+      "minecraft:movement.sway": { "sway_amplitude": 0 },
+      "minecraft:physics": { "has_gravity": false },
+      "minecraft:breathable": {
+        "total_supply": 15,
+        "suffocate_time": 0,
+        "breathes_water": true,
+        "breathes_air": false,
+        "generates_bubbles": true
+      },
+      "minecraft:nameable": { "always_show": false, "allow_name_tag_renaming": true },
+      "minecraft:pushable": { "is_pushable": true, "is_pushable_by_piston": true },
+      "minecraft:conditional_bandwidth_optimization": {},
+      "minecraft:follow_range": { "value": 32, "max": 32 },
+      "minecraft:behavior.float": { "priority": 0 },
+      "minecraft:behavior.random_swim": {
+        "priority": 7,
+        "speed_multiplier": 1,
+        "interval": 60,
+        "xz_dist": 12,
+        "y_dist": 6
+      },
+      "minecraft:behavior.random_look_around": { "priority": 10 },
+      "minecraft:despawn": { "despawn_from_distance": {} },
+      "minecraft:damage_sensor": {
+        "triggers": [
+          { "cause": "fall", "deals_damage": "no" },
+          { "cause": "drowning", "deals_damage": "no" }
+        ]
+      }
+    },
+    "events": {
+      "minecraft:entity_spawned": {}
+    }
+  }
+}

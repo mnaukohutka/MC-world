@@ -35,12 +35,18 @@ const OXIDIZED_STONE = "pa:oxidized_copper_stone";
 const SOIL = "pa:copper_soil";
 const PATINA = "pa:copper_patina";
 const BRICKS = "pa:copper_bricks";
-const LAMP_BLOCK = "pa:copper_lamp";
+const LAMP_BLOCK = "minecraft:copper_bulb";
 const GRASS = "pa:copper_grass";
 const LEAVES = "pa:copper_leaves";
 const LOG = "pa:copper_wood";
 const FLUID_A = "pa:fluid_copper";
 const FLUID_B = "pa:fluid_copper_oxidized";
+
+/* Copper flora: the cross-rendered ground cover and the sapling. */
+const FERN = "pa:copper_fern";
+const BLOOM = "pa:copper_bloom";
+const FUNGUS = "pa:copper_fungus";
+const SAPLING = "pa:custom_sapling_copper";
 
 /* The three custom copper stones, ordered fresh -> oxidized like the vanilla
  * family, so a biome can pick the stage its rock is in. */
@@ -97,6 +103,9 @@ const RAW_COPPER = "minecraft:raw_copper_block";
  * beside it: when mined it yields raw copper plus the metals that historically
  * travel with copper — iron, gold, and the odd gem — so prospecting the copper
  * caves pays in more than one metal.
+ *
+ * The lamp post cap is vanilla's own copper bulb rather than a bespoke lamp, so
+ * the light matches the copper family's oxidation stages for free.
  */
 const COPPER_ORE = "pa:copper_ore";
 const DEEPSLATE_COPPER_ORE = "pa:deepslate_copper_ore";
@@ -534,29 +543,58 @@ function decorateTile(dimension, tileX, tileZ) {
  * carpet the biome. The flavour is copper: lamp posts on their own copper rock,
  * patina and raw-copper clusters, and a copper grate skylight where a cave
  * mouth would be.
+ *
+ * The flora is deliberately varied per biome — a cross-rendered fern, bloom and
+ * fungus plus the odd copper sapling — so a walk reads as a landscape rather
+ * than one repeated prop. Lamp posts are kept scarce (roughly one per 100-300
+ * columns) so they mark a path instead of lighting up the whole biome.
  */
 function decorateColumn(dimension, x, top, z, biome) {
   const ground = dimension.getBlock({ x, y: top, z });
   if (!ground || ground.isAir || ground.isLiquid) return;
 
   const roll = random2(x * 11, z * 17, 0x8a);
+  const sprout = random2(x * 5, z * 23, 0xbb);
 
   if (biome === MUSHROOM) {
-    if (roll < 0.03) placeLampPost(dimension, x, top, z);
+    if (roll < 0.01) placeLampPost(dimension, x, top, z);
+    else if (sprout < 0.14) setCover(dimension, x, top, z, FUNGUS);
+    else if (sprout < 0.17) setCover(dimension, x, top, z, SAPLING);
     return;
   }
   if (biome === BADLANDS) {
-    if (roll < 0.02) placeLampPost(dimension, x, top, z);
+    if (roll < 0.007) placeLampPost(dimension, x, top, z);
     else if (roll < 0.05) setCover(dimension, x, top, z, PATINA);
+    else if (sprout < 0.05) setCover(dimension, x, top, z, BLOOM);
     return;
   }
   if (biome === SNOW) {
     setCover(dimension, x, top, z, SNOW_LAYER);
+    if (sprout < 0.03) setCover(dimension, x, top + 1, z, FERN);
     return;
   }
-  if (biome === PLAIN || biome === FOREST) {
-    if (roll < 0.008) placeLampPost(dimension, x, top, z);
+  if (biome === SWAMP) {
+    if (sprout < 0.2) setCover(dimension, x, top, z, FERN);
+    else if (sprout < 0.26) setCover(dimension, x, top, z, FUNGUS);
+    else if (sprout < 0.3) setCover(dimension, x, top, z, SAPLING);
+    return;
+  }
+  if (biome === FOREST) {
+    if (roll < 0.0025) placeLampPost(dimension, x, top, z);
+    else if (sprout < 0.08) setCover(dimension, x, top, z, FERN);
+    else if (sprout < 0.12) setCover(dimension, x, top, z, BLOOM);
+    else if (sprout < 0.14) setCover(dimension, x, top, z, SAPLING);
+    return;
+  }
+  if (biome === PLAIN || biome === BEACH) {
+    if (roll < 0.002) placeLampPost(dimension, x, top, z);
     else if (roll < 0.03) setCover(dimension, x, top, z, PATINA);
+    else if (sprout < 0.05) setCover(dimension, x, top, z, FERN);
+    else if (sprout < 0.08) setCover(dimension, x, top, z, BLOOM);
+    return;
+  }
+  if (biome === MOUNTAIN) {
+    if (sprout < 0.04) setCover(dimension, x, top, z, FERN);
   }
 }
 
@@ -575,7 +613,11 @@ function placeLampPost(dimension, x, top, z) {
     block.setType(CONNECTOR);
   }
   const cap = dimension.getBlock({ x, y: top + height + 1, z });
-  if (cap && cap.isAir) cap.setType(LAMP_BLOCK);
+  if (cap && cap.isAir) {
+    // The bulb is the lamp: it is placed already lit, so a post is a landmark
+    // even before a keeper passes, and a shade can dim it again.
+    cap.setPermutation(BlockPermutation.resolve(LAMP_BLOCK).withState("lit", true));
+  }
 }
 
 /** Ocean: both fluids, laid down as sources up to sea level. */

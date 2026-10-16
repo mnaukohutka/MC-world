@@ -10,6 +10,15 @@
     "pa_copper_bricks": {
       "textures": "textures/blocks/pa_copper_bricks"
     },
+    "pa_copper_bloom": {
+      "textures": "textures/blocks/pa_copper_bloom"
+    },
+    "pa_copper_fern": {
+      "textures": "textures/blocks/pa_copper_fern"
+    },
+    "pa_copper_fungus": {
+      "textures": "textures/blocks/pa_copper_fungus"
+    },
     "pa_copper_grass_bottom": {
       "textures": "textures/blocks/pa_copper_grass_bottom"
     },
