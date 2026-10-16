@@ -113,3 +113,14 @@ metadata/json_schemas/server/block/<ver>/.
   and `minecraft:light_emission`, and `pa_copper_lamp:trigger` toggles the state
   on interact. There is no script hook for redstone power on a custom block, so
   a redstone-driven lamp is not possible — the interact is deliberate.
+- A block's custom-component key is the *registered* id verbatim, not the block
+  id plus a suffix. Writing `"pa:copper_lamp:trigger"` where the script
+  registered `pa_copper_lamp:trigger` is an identifier with two colons: Bedrock
+  rejects it ("child ... not valid here"), the whole block fails to parse, and
+  the fallout reads as unrelated errors — "Block type pa:copper_lamp not found",
+  a broken recipe and terrain generation stopping. Keep the key and
+  `registerCustomComponent` argument byte-identical.
+- Two shaped recipes with the same pattern and key items collide: Bedrock logs a
+  duplicate-recipe warning and only one wins. Give a custom recipe its own
+  ingredients rather than reusing a vanilla pattern (e.g. patina from oxidized
+  copper *grate*, not the plain oxidized copper that already makes cut copper).
