@@ -30,7 +30,23 @@ const KEEPER = "pa:copper_keeper";
 const MINNOW = "pa:copper_minnow";
 const CRAB = "pa:copper_crab";
 const SHADE = "pa:copper_shade";
-const WORKERS = new Set([BEE, FISH, MOLE, KEEPER, MINNOW, CRAB, SHADE]);
+
+/* Round-8 residents. Each of these was previously scenery — it walked or flew
+ * but did nothing. They now carry a craft of their own, so every copper mob has
+ * a reason to be where it is: */
+const BORER = "pa:copper_borer";     // digs exploratory tunnels, laces the walls with ore
+const GUARD = "pa:copper_guard";     // escorts, driving off the creepers
+const BOAR = "pa:copper_boar";       // roots the soil, turning up buried raw copper
+const MITE = "pa:copper_mite";       // corrodes worked copper into patina
+const JELLY = "pa:copper_jelly";     // drifts and glows, lighting the water
+const WISP = "pa:copper_wisp";       // guides travellers toward the light
+const BAT = "pa:copper_bat";         // seeds copper fungus through the caves
+const GHOST = "pa:copper_ghost";     // the happy ghost, who mends the weary
+
+const WORKERS = new Set([
+  BEE, FISH, MOLE, KEEPER, MINNOW, CRAB, SHADE,
+  BORER, GUARD, BOAR, MITE, JELLY, WISP, BAT, GHOST,
+]);
 
 const SENSE_INTERVAL = 60;    // ticks between a worker's turns (3 s)
 const SENSE_RADIUS = 8;       // blocks a worker can see
@@ -49,6 +65,15 @@ const COPPER_SOIL = "pa:copper_soil";
 const LAMP = "pa:copper_lamp";
 const BULB = "minecraft:copper_bulb";
 const COPPER_LEAVES = "pa:copper_leaves";
+const PATINA = "pa:copper_patina";
+const BRICKS = "pa:copper_bricks";
+const COPPER_BLOCK = "minecraft:copper_block";
+const CUT_COPPER = "minecraft:cut_copper";
+const CHISELED = "minecraft:chiseled_copper";
+const FUNGUS = "pa:copper_fungus";
+const GEM_ORE = "pa:copper_ore_gem";
+const DEEPSLATE_GEM = "pa:deepslate_copper_ore_gem";
+const CREEPER = "minecraft:creeper";
 
 /** Blocks a worker may place into — never overwrite anything the player built. */
 const REPLACEABLE = new Set(["minecraft:air", "minecraft:short_grass", "minecraft:fern"]);
@@ -102,6 +127,14 @@ function act(worker, dimension) {
     case CRAB: return crabWork(worker, dimension);
     case KEEPER: return keeperWork(worker, dimension);
     case SHADE: return shadeWork(worker, dimension);
+    case BORER: return borerWork(worker, dimension);
+    case GUARD: return guardWork(worker, dimension);
+    case BOAR: return boarWork(worker, dimension);
+    case MITE: return miteWork(worker, dimension);
+    case JELLY: return jellyWork(worker, dimension);
+    case WISP: return wispWork(worker, dimension);
+    case BAT: return batWork(worker, dimension);
+    case GHOST: return ghostWork(worker, dimension);
     default: return undefined;
   }
 }
@@ -300,6 +333,196 @@ function keeperWork(worker, dimension) {
   }
 }
 
+// ── Borer: dig exploratory tunnels, seed ore ────────────────────────────────
+
+/*
+ * The borer is the mole's opposite: where the mole tidies ore out of the rock,
+ * the borer tunnels onward and leaves a seam behind it. It sinks a short
+ * passage in a random direction and, every so often, lines the far wall with
+ * gem ore — so following a borer's trail is how a player finds the deep pockets.
+ */
+function borerWork(worker, dimension) {
+  const wall = findBlock(dimension, worker.location, 3, (id) =>
+    id === "pa:copper_stone" || id === "pa:weathered_copper_stone" || id === "pa:oxidized_copper_stone"
+  );
+  if (wall && random3ish(worker) < 0.5) {
+    safeSet(dimension, wall, worker.location.y < 0 ? DEEPSLATE_GEM : GEM_ORE);
+    dimension.spawnParticle("minecraft:basic_crit_particle", above(wall), directionVariables({ x: 0, y: 1, z: 0 }));
+    dimension.playSound("dig.stone", above(wall), { pitch: 1.3, volume: 0.4 });
+    return;
+  }
+  dig(worker, dimension, 2);
+}
+
+// ── Guard: escort and cull the creepers ─────────────────────────────────────
+
+/*
+ * The guard is the dimension's peacekeeper. It hunts the nearest creeper within
+ * sight and drives it off, and otherwise shadows the nearest worker so a lone
+ * bee or keeper is never without an escort. The actual attack is the entity
+ * JSON's job; this only chooses the quarry and shows the guard noticing it.
+ */
+function guardWork(worker, dimension) {
+  const creeper = nearestEntity(dimension, worker, CREEPER, 12);
+  if (creeper) {
+    face(worker, creeper.location);
+    dimension.spawnParticle("minecraft:basic_crit_particle", above(worker.location), directionVariables({ x: 0, y: 1, z: 0 }));
+    return;
+  }
+  const ward = nearestWorker(dimension, worker, 10);
+  if (ward) face(worker, ward.location);
+  else wander(worker);
+}
+
+// ── Boar: root the soil for raw copper ──────────────────────────────────────
+
+/*
+ * The boar roots. It noses into a copper-soil or grass block and, now and then,
+ * turns up a nugget of raw copper — a slow, wandering way for the surface to
+ * yield metal without a mine. It also tramples a grass block to soil where it
+ * forages, so its patch reads as worked ground.
+ */
+function boarWork(worker, dimension) {
+  const ground = findBlock(dimension, worker.location, 3, (id) =>
+    id === COPPER_GRASS || id === COPPER_SOIL
+  );
+  if (!ground) {
+    wander(worker);
+    return;
+  }
+  face(worker, ground);
+  const block = tryBlock(dimension, ground);
+  if (!block) return;
+  dimension.spawnParticle("minecraft:basic_smoke_particle", above(ground));
+  if (random3ish(worker) < 0.35) {
+    safeSet(dimension, ground, COPPER_SOIL);
+    const drop = dimension.spawnItem(new ItemStack("minecraft:raw_copper", 1), above(ground));
+    try {
+      drop.applyImpulse({ x: 0, y: 0.15, z: 0 });
+    } catch {
+      // Best-effort nudge; the item is already on the ground.
+    }
+  }
+}
+
+// ── Mite: corrode worked copper into patina ─────────────────────────────────
+
+/*
+ * The mite is the slow weathering made visible. It crawls over cut copper,
+ * bricks and chiselled blocks and eats the shine off them, leaving the pack's
+ * patina behind — the same oxidation the biomes stage on the terrain, but here
+ * happening to a player's build.
+ */
+function miteWork(worker, dimension) {
+  const worked = findBlock(dimension, worker.location, 3, (id) =>
+    id === CUT_COPPER || id === CHISELED || id === BRICKS || id === COPPER_BLOCK
+  );
+  if (!worked) {
+    wander(worker);
+    return;
+  }
+  face(worker, worked);
+  safeSet(dimension, worked, PATINA);
+  dimension.spawnParticle("minecraft:basic_smoke_particle", above(worked));
+  dimension.playSound("random.fizz", above(worked), { pitch: 1.6, volume: 0.3 });
+}
+
+// ── Jelly: drift and glow in the shallows ───────────────────────────────────
+
+/*
+ * The jelly is the shallows' lantern. It drifts, and wherever it lingers over a
+ * dark seafloor it leaves copper seagrass — a little glow in water that would
+ * otherwise be lit only from above.
+ */
+function jellyWork(worker, dimension) {
+  const floor = findBlock(dimension, { x: worker.location.x, y: worker.location.y - 2, z: worker.location.z }, 3, (id) =>
+    id === "pa:copper_soil" || id === "pa:copper_stone" || id === "minecraft:gravel"
+  );
+  if (floor && random3ish(worker) < 0.4) {
+    const spot = { x: floor.x, y: floor.y + 1, z: floor.z };
+    const block = tryBlock(dimension, spot);
+    if (block && (block.isLiquid || block.typeId === "minecraft:water")) {
+      safeSet(dimension, spot, "pa:copper_seagrass");
+      dimension.spawnParticle("minecraft:basic_bubble_particle", above(floor));
+      return;
+    }
+  }
+  idleSwim(worker);
+}
+
+// ── Wisp: guide travellers toward the light ─────────────────────────────────
+
+/*
+ * The wisp is a guide. When a player is nearby it drifts towards them and hangs
+ * a little above head height, marking the way back to open sky — the copper
+ * country's answer to a lantern in the dark. With no player it hovers over the
+ * brightest block it can find.
+ */
+function wispWork(worker, dimension) {
+  const players = dimension.getPlayers({ location: worker.location, maxDistance: 24 });
+  if (players.length > 0) {
+    face(worker, players[0].location);
+    dimension.spawnParticle("minecraft:basic_flame_particle", { x: worker.location.x, y: worker.location.y + 0.6, z: worker.location.z });
+    return;
+  }
+  wander(worker);
+}
+
+// ── Bat: seed copper fungus through the caves ───────────────────────────────
+
+/*
+ * The bat carries spores. Flying through a cave it dusts the nearest stone wall
+ * with copper fungus, which is what makes a cave read as alive rather than bare.
+ */
+function batWork(worker, dimension) {
+  const wall = findBlock(dimension, worker.location, 3, (id) =>
+    id === "pa:copper_stone" || id === "pa:weathered_copper_stone" || id === "pa:oxidized_copper_stone"
+  );
+  if (!wall || worker.location.y > 60) {
+    wander(worker);
+    return;
+  }
+  const spot = { x: wall.x, y: wall.y + 1, z: wall.z };
+  const block = tryBlock(dimension, spot);
+  if (block && block.isAir) {
+    safeSet(dimension, spot, FUNGUS);
+    dimension.spawnParticle("minecraft:basic_smoke_particle", above(wall));
+  }
+}
+
+// ── Happy ghost: mend the weary ─────────────────────────────────────────────
+
+/*
+ * The happy ghost is the dimension's one kindness. It floats to any player who
+ * is hurt and, on reaching them, gives back a little health with a soft chime —
+ * then drifts away. It never fights and never crowds a healthy player, so it
+ * stays a rare comfort rather than a follower.
+ */
+function ghostWork(worker, dimension) {
+  const hurt = dimension.getPlayers({ location: worker.location, maxDistance: 16 })
+    .filter((p) => p.getComponent("minecraft:health")?.currentValue < p.getComponent("minecraft:health")?.effectiveMax);
+  if (hurt.length === 0) {
+    wander(worker);
+    return;
+  }
+  const target = hurt[0];
+  face(worker, target.location);
+  const at = worker.location;
+  const distanceToTarget = distance(at, target.location);
+  if (distanceToTarget > 2.5) return;
+
+  try {
+    const health = target.getComponent("minecraft:health");
+    if (health && health.currentValue < health.effectiveMax) {
+      health.setCurrentValue(Math.min(health.effectiveMax, health.currentValue + 2));
+      dimension.playSound("random.levelup", target.location, { pitch: 2.0, volume: 0.4 });
+      dimension.spawnParticle("minecraft:heart_particle", { x: target.location.x, y: target.location.y + 1.2, z: target.location.z });
+    }
+  } catch {
+    // The player left the world between the scan and the heal.
+  }
+}
+
 // ── Shared helpers ──────────────────────────────────────────────────────────
 
 function safeDimension() {
@@ -474,6 +697,105 @@ function wander(worker) {
   }
 }
 
+/** Turns a worker to look at a point, without moving it. */
+function face(worker, at) {
+  try {
+    const rotation = worker.getRotation();
+    const dx = at.x - worker.location.x;
+    const dz = at.z - worker.location.z;
+    if (dx !== 0 || dz !== 0) rotation.y = (Math.atan2(-dx, dz) * 180) / Math.PI;
+    worker.setRotation(rotation);
+  } catch {
+    // Rotation is best-effort.
+  }
+}
+
+/**
+ * A stable per-entity 0..1 roll. The worker brain runs on a fixed cadence, so a
+ * plain `Math.random()` would make the same worker flip-flop every cycle; this
+ * spreads the decision across the population while still varying over time via
+ * the truncated tick.
+ */
+function random3ish(worker) {
+  let hash = system.currentTick | 0;
+  for (let i = 0; i < worker.id.length; i++) hash = (hash * 31 + worker.id.charCodeAt(i)) >>> 0;
+  hash = Math.imul(hash ^ (hash >>> 15), 0x2545f491);
+  return ((hash ^ (hash >>> 13)) >>> 0) / 0xffffffff;
+}
+
+/** The nearest entity of a type within `radius`, if any. */
+function nearestEntity(dimension, worker, typeId, radius) {
+  try {
+    const found = dimension.getEntities({ type: typeId, location: worker.location, maxDistance: radius });
+    let best;
+    let bestDistance = Infinity;
+    for (const entity of found) {
+      const d = distance(worker.location, entity.location);
+      if (d < bestDistance) {
+        bestDistance = d;
+        best = entity;
+      }
+    }
+    return best;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The nearest other copper worker within `radius`, for an escort to shadow. */
+function nearestWorker(dimension, worker, radius) {
+  try {
+    const found = dimension.getEntities({
+      families: ["pa_worker"],
+      excludeTypes: ["minecraft:player", "minecraft:item"],
+      location: worker.location,
+      maxDistance: radius,
+    });
+    let best;
+    let bestDistance = Infinity;
+    for (const entity of found) {
+      if (entity.id === worker.id) continue;
+      const d = distance(worker.location, entity.location);
+      if (d < bestDistance) {
+        bestDistance = d;
+        best = entity;
+      }
+    }
+    return best;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Sinks a short straight tunnel and steps the worker into it, carving two blocks
+ * of headroom so it is never sealed inside stone. `length` caps how far one turn
+ * can carry it, which is what keeps a borer from wandering off in a straight line
+ * forever.
+ */
+function dig(worker, dimension, length) {
+  const at = worker.location;
+  try {
+    const rotation = worker.getRotation();
+    const yaw = (rotation.y * Math.PI) / 180;
+    const dx = Math.round(-Math.sin(yaw)) || (Math.random() < 0.5 ? 1 : -1);
+    const dz = Math.round(Math.cos(yaw)) || 1;
+    for (let step = 1; step <= length; step++) {
+      const to = { x: Math.floor(at.x + dx * step), y: Math.floor(at.y), z: Math.floor(at.z + dz * step) };
+      const block = tryBlock(dimension, to);
+      if (!block || block.isLiquid) return;
+      for (const y of [to.y, to.y + 1]) {
+        dimension.getBlock({ x: to.x, y, z: to.z })?.setType("minecraft:air");
+      }
+    }
+    const end = { x: at.x + dx * length, y: at.y, z: at.z + dz * length };
+    worker.teleport(end, { dimension });
+    dimension.spawnParticle("minecraft:basic_crit_particle", above({ x: Math.floor(at.x), y: Math.floor(at.y), z: Math.floor(at.z) }), directionVariables({ x: 0, y: 1, z: 0 }));
+  } catch {
+    // Teleport can be refused mid-motion; the next cycle retries.
+  }
+}
+
 function idleSwim(worker, toward) {
   try {
     const rotation = worker.getRotation();
@@ -540,4 +862,7 @@ function spread(id) {
   return hash % SENSE_INTERVAL;
 }
 
-export const WORKER_TYPES = [BEE, FISH, MOLE, KEEPER, MINNOW, CRAB, SHADE];
+export const WORKER_TYPES = [
+  BEE, FISH, MOLE, KEEPER, MINNOW, CRAB, SHADE,
+  BORER, GUARD, BOAR, MITE, JELLY, WISP, BAT, GHOST,
+];

@@ -387,6 +387,19 @@ function isCave(x, y, z) {
   return Math.abs(b) <= CAVE_WIDTH;
 }
 
+/*
+ * Caverns are the counterpoint to the tunnels: broad rooms rather than winding
+ * passages. A single smooth field opened above a threshold carves one big void
+ * per cell instead of a web of thin ones, which is what a player reads as a
+ * chamber to explore. The threshold is high enough that caverns stay rare and
+ * the tunnels between them still do the connecting.
+ */
+const CAVERN_SIZE = 90;
+function isCavern(x, y, z) {
+  const field = valueNoise3(x / CAVERN_SIZE, y / (CAVERN_SIZE * 0.55), z / CAVERN_SIZE, 0x7a);
+  return field > 0.62;
+}
+
 /** How mountainous the column is, -1..1. */
 function mountainness(x, z) {
   return fbm(x / 240, z / 240, 2, 0x33);
@@ -492,19 +505,62 @@ function treeSpeciesAt(x, z, biome) {
 
 /** Carves the cave network out of one already-solid column. */
 function carveColumn(dimension, x, z, bottom, top) {
-  if (!caveColumn(x, z)) return;
+  const tunnelled = caveColumn(x, z);
   // Caves are kept to the reachable band, which also keeps the scan short.
   const from = Math.max(bottom + 1, MIN_CAVE_Y);
   for (let y = from; y < top - 1; y++) {
-    if (!isCave(x, y, z)) continue;
-    // Every so often a cave wall keeps its copper, so the tunnels are not bare.
+    const inTunnel = tunnelled && isCave(x, y, z);
+    const inCavern = !inTunnel && y < top - 10 && isCavern(x, y, z);
+    if (!inTunnel && !inCavern) continue;
     const block = dimension.getBlock({ x, y, z });
     if (!block) continue;
-    if (y < 0 && random3(x, y, z, 0x0f) < 0.35) {
+    // Copper veins run thicker through the deep rock, so a cavern floor is
+    // worth digging over and a tunnel wall still pays for the torch it costs.
+    const veinChance = inCavern ? 0.4 : 0.35;
+    if (y < 0 && random3(x, y, z, 0x0f) < veinChance) {
       block.setPermutation(oreAt("pa:copper_plain", x, y, z));
     } else {
       block.setPermutation(permutation("minecraft:air"));
     }
+  }
+}
+
+/**
+ * Dresses the floor and ceiling of a cavern once its rock is carved. Ore already
+ * flakes the walls from `carveColumn`; this adds the standing detail — patina
+ * crusts, copper fungus and a scattering of raw-copper boulders — so a chamber
+ * reads as a place rather than an empty bubble.
+ */
+function decorateCavern(dimension, x, z, bottom, top) {
+  if (!caveColumn(x, z)) return;
+  for (let y = Math.max(bottom + 2, MIN_CAVE_Y); y < top - 2; y++) {
+    // Only touch the open cells of the cavern itself.
+    const here = dimension.getBlock({ x, y, z });
+    if (!here) continue;
+    if (!here.isAir) {
+      // A solid cell just above a cavern void is its ceiling: hang a little
+      // fungus, lichen or a glowing copper bulb there, so a deep chamber is lit
+      // from above rather than pitch black.
+      const below = dimension.getBlock({ x, y: y - 1, z });
+      if (below && below.isAir) {
+        const roll = random3(x, y, z, 0x2c);
+        if (roll < 0.015) {
+          here.setPermutation(BlockPermutation.resolve(LAMP_BLOCK).withState("lit", true));
+        } else if (roll < 0.10) {
+          here.setPermutation(permutation(random3(x, y, z, 0x2d) < 0.5 ? FUNGUS : LICHEN));
+        }
+      }
+      continue;
+    }
+    const below = dimension.getBlock({ x, y: y - 1, z });
+    if (!below || below.isAir) continue;
+    // This is a cavern floor cell. Give it occasional cover and ore boulders.
+    const roll = random3(x, y, z, 0x2e);
+    if (roll < 0.05) here.setPermutation(permutation(PATINA));
+    else if (roll < 0.09) here.setPermutation(permutation(FUNGUS));
+    else if (roll < 0.12) here.setPermutation(permutation(LICHEN));
+    else if (roll < 0.15) here.setPermutation(permutation(RAW_COPPER));
+    else if (roll < 0.17) here.setPermutation(permutation(STONE));
   }
 }
 
@@ -515,6 +571,9 @@ function buildColumn(dimension, x, z, top, bottom, biome) {
   });
 
   carveColumn(dimension, x, z, bottom, top);
+
+  // Cavern floors and ceilings get their standing detail after the rock is gone.
+  decorateCavern(dimension, x, z, bottom, top);
 
   /*
    * A shallow band of copper soil and raw copper under the surface gives each
