@@ -15,6 +15,11 @@ Minecraft Bedrock addon (`copper-1_behavior_pack` + `copper-1_resource_pack`).
   around players and places the spawn pad before the first teleport.
 - `world.tickingAreaManager.createTickingArea(...)` must be awaited before
   reading/writing blocks in a fresh dimension, or the chunks are not loaded.
+- Script-registered dimensions have **no biome system**: biome and client_biome
+  JSON are only used by vanilla terrain generation. Keeping them only produces
+  `Loaded client biome but no biome with that name exists` and
+  `Missing referenced asset` errors, so this pack ships none and paints the
+  surface with blocks instead.
 
 ## Validation without the game
 

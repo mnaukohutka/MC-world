@@ -251,6 +251,12 @@ export function startTerrainLoop(dimensionId) {
     for (const player of world.getPlayers()) {
       if (player.dimension.id !== dimensionId) continue;
       queueTerrainAround(player, dimensionId);
+      // Terrain is filled a few tiles at a time, so a sprinting player can
+      // outrun it. Catch anyone who fell through before their tile existed.
+      if (player.location.y < MIN_Y + 8) {
+        player.teleport({ x: player.location.x, y: SURFACE_Y + 2, z: player.location.z }, { dimension: player.dimension });
+        player.sendMessage("§eThe dimension was still forming — you were lifted back up.");
+      }
     }
     void runQueue(world.getDimension(dimensionId));
   }, 20);
