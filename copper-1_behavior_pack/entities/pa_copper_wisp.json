@@ -1,0 +1,56 @@
+{
+  "format_version": "1.21.100",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "pa:copper_wisp",
+      "is_spawnable": true,
+      "is_summonable": true
+    },
+    "component_groups": {
+      "pa:despawn": {
+        "minecraft:instant_despawn": {}
+      }
+    },
+    "components": {
+      "minecraft:type_family": {
+        "family": [ "pa_worker", "pa_flyer", "copper_wisp", "mob" ]
+      },
+      "minecraft:collision_box": { "width": 0.35, "height": 0.6 },
+      "minecraft:health": { "value": 14, "max": 14 },
+      "minecraft:movement": { "value": 0.1 },
+      "minecraft:movement.basic": {},
+      "minecraft:jump.static": {},
+      "minecraft:can_fly": {},
+      "minecraft:navigation.fly": {
+        "can_path_over_water": true,
+        "can_path_from_air": true,
+        "avoid_damage_blocks": true
+      },
+      "minecraft:breathable": { "total_supply": 15, "suffocate_time": 0 },
+      "minecraft:physics": { "has_gravity": false },
+      "minecraft:pushable": { "is_pushable": true, "is_pushable_by_piston": true },
+      "minecraft:nameable": { "always_show": false, "allow_name_tag_renaming": true },
+      "minecraft:conditional_bandwidth_optimization": {},
+      "minecraft:follow_range": { "value": 24, "max": 24 },
+      "minecraft:behavior.float": { "priority": 0 },
+      "minecraft:behavior.random_hover": {
+        "priority": 6,
+        "xz_dist": 8,
+        "y_dist": 4,
+        "y_offset": -1,
+        "interval": 60,
+        "hover_height": [ 1, 4 ]
+      },
+      "minecraft:behavior.random_look_around": { "priority": 10 },
+      "minecraft:despawn": { "despawn_from_distance": { "min_distance": 44, "max_distance": 56 } },
+      "minecraft:damage_sensor": {
+        "triggers": [
+          { "cause": "fall", "deals_damage": "no" }
+        ]
+      }
+    },
+    "events": {
+      "minecraft:entity_spawned": {}
+    }
+  }
+}

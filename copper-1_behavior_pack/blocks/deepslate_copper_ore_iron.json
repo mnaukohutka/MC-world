@@ -1,0 +1,28 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:block": {
+    "description": {
+      "identifier": "pa:deepslate_copper_ore_iron",
+      "menu_category": {
+        "category": "nature"
+      }
+    },
+    "components": {
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 4.5
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 3
+      },
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "pa_deepslate_copper_ore_iron",
+          "render_method": "opaque"
+        }
+      },
+      "minecraft:map_color": "#5A5A5E",
+      "minecraft:loot": "loot_tables/blocks/pa_deepslate_copper_ore_iron.json"
+    }
+  }
+}

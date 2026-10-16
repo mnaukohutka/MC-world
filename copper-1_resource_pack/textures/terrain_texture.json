@@ -10,6 +10,15 @@
     "pa_copper_bricks": {
       "textures": "textures/blocks/pa_copper_bricks"
     },
+    "pa_copper_bloom": {
+      "textures": "textures/blocks/pa_copper_bloom"
+    },
+    "pa_copper_fern": {
+      "textures": "textures/blocks/pa_copper_fern"
+    },
+    "pa_copper_fungus": {
+      "textures": "textures/blocks/pa_copper_fungus"
+    },
     "pa_copper_grass_bottom": {
       "textures": "textures/blocks/pa_copper_grass_bottom"
     },
@@ -75,6 +84,84 @@
     },
     "pa_weathered_copper_stone": {
       "textures": "textures/blocks/pa_weathered_copper_stone"
+    },
+    "dimension_copper_portal": {
+      "textures": "textures/blocks/dimension_copper_portal"
+    },
+    "pa_copper_azalea": {
+      "textures": "textures/blocks/pa_copper_azalea"
+    },
+    "pa_copper_berry_bush": {
+      "textures": "textures/blocks/pa_copper_berry_bush"
+    },
+    "pa_copper_clematis": {
+      "textures": "textures/blocks/pa_copper_clematis"
+    },
+    "pa_copper_coral": {
+      "textures": "textures/blocks/pa_copper_coral"
+    },
+    "pa_copper_kelp": {
+      "textures": "textures/blocks/pa_copper_kelp"
+    },
+    "pa_copper_lichen": {
+      "textures": "textures/blocks/pa_copper_lichen"
+    },
+    "pa_copper_lungwort": {
+      "textures": "textures/blocks/pa_copper_lungwort"
+    },
+    "pa_copper_ore_gem": {
+      "textures": "textures/blocks/pa_copper_ore_gem"
+    },
+    "pa_copper_ore_gold": {
+      "textures": "textures/blocks/pa_copper_ore_gold"
+    },
+    "pa_copper_ore_iron": {
+      "textures": "textures/blocks/pa_copper_ore_iron"
+    },
+    "pa_copper_seagrass": {
+      "textures": "textures/blocks/pa_copper_seagrass"
+    },
+    "pa_copper_thistle": {
+      "textures": "textures/blocks/pa_copper_thistle"
+    },
+    "pa_deepslate_copper_ore_gem": {
+      "textures": "textures/blocks/pa_deepslate_copper_ore_gem"
+    },
+    "pa_deepslate_copper_ore_gold": {
+      "textures": "textures/blocks/pa_deepslate_copper_ore_gold"
+    },
+    "pa_deepslate_copper_ore_iron": {
+      "textures": "textures/blocks/pa_deepslate_copper_ore_iron"
+    },
+    "pa_verdigris_leaves": {
+      "textures": "textures/blocks/pa_verdigris_leaves"
+    },
+    "pa_verdigris_wood_down": {
+      "textures": "textures/blocks/pa_verdigris_wood_down"
+    },
+    "pa_verdigris_wood_side": {
+      "textures": "textures/blocks/pa_verdigris_wood_side"
+    },
+    "pa_verdigris_wood_up": {
+      "textures": "textures/blocks/pa_verdigris_wood_up"
+    },
+    "pa_vermilion_leaves": {
+      "textures": "textures/blocks/pa_vermilion_leaves"
+    },
+    "pa_vermilion_wood_down": {
+      "textures": "textures/blocks/pa_vermilion_wood_down"
+    },
+    "pa_vermilion_wood_side": {
+      "textures": "textures/blocks/pa_vermilion_wood_side"
+    },
+    "pa_vermilion_wood_up": {
+      "textures": "textures/blocks/pa_vermilion_wood_up"
+    },
+    "pa_verdigris_sapling": {
+      "textures": "textures/blocks/pa_verdigris_leaves"
+    },
+    "pa_vermilion_sapling": {
+      "textures": "textures/blocks/pa_vermilion_leaves"
     }
   }
 }

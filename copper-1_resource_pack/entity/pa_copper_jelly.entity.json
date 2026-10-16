@@ -1,0 +1,35 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "pa:copper_jelly",
+      "materials": {
+        "default": "squid"
+      },
+      "textures": {
+        "default": "textures/entity/pa_mobs/copper_jelly"
+      },
+      "geometry": {
+        "default": "geometry.squid"
+      },
+      "scripts": {
+        "animate": [
+          "move",
+          "squid_rotate"
+        ]
+      },
+      "animations": {
+        "move": "animation.squid.move",
+        "squid_rotate": "animation.squid.rotate"
+      },
+      "animation_controllers": null,
+      "render_controllers": [
+        "controller.render.default"
+      ],
+      "spawn_egg": {
+        "base_color": "#b4682e",
+        "overlay_color": "#7c9c6a"
+      }
+    }
+  }
+}

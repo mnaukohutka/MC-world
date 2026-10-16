@@ -1,0 +1,29 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:block": {
+    "description": {
+      "identifier": "pa:verdigris_leaves",
+      "menu_category": {
+        "category": "nature"
+      }
+    },
+    "components": {
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.3
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 0.2
+      },
+      "minecraft:geometry": "minecraft:geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "pa_verdigris_leaves",
+          "render_method": "alpha_test_single_sided"
+        }
+      },
+      "minecraft:map_color": "#3f6f5a",
+      "minecraft:light_dampening": 1,
+      "minecraft:loot": "loot_tables/blocks/verdigris_leaves.json"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "pa:copper_wisp",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/entity/pa_mobs/copper_wisp" },
+      "geometry": { "default": "geometry.allay" },
+      "scripts": {
+        "animate": [ "general" ]
+      },
+      "animations": {
+        "idle": "animation.allay.idle",
+        "fly": "animation.allay.fly",
+        "general": "controller.animation.allay.general"
+      },
+      "render_controllers": [ "controller.render.default" ],
+      "spawn_egg": { "base_color": "#d9a978", "overlay_color": "#f0c49c" }
+    }
+  }
+}

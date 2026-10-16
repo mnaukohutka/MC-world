@@ -1,0 +1,37 @@
+{
+  "format_version": "1.8.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "pa:copper_villager",
+      "materials": {
+        "default": "villager"
+      },
+      "textures": {
+        "default": "textures/entity/pa_mobs/copper_villager"
+      },
+      "geometry": {
+        "default": "geometry.villager.v1.8"
+      },
+      "scripts": {
+        "scale": "query.is_baby ? 0.5 : 0.9375",
+        "animate": [
+          "general",
+          "look_at_target",
+          "move"
+        ]
+      },
+      "animations": {
+        "general": "animation.villager.general",
+        "look_at_target": "animation.common.look_at_target",
+        "move": "animation.villager.move"
+      },
+      "render_controllers": [
+        "controller.render.default"
+      ],
+      "spawn_egg": {
+        "base_color": "#b4682e",
+        "overlay_color": "#2b2b2b"
+      }
+    }
+  }
+}

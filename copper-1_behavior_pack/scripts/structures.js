@@ -1,4 +1,4 @@
-import { world, system, ItemStack } from "@minecraft/server";
+import { world, system, ItemStack, BlockPermutation } from "@minecraft/server";
 
 /*
  * Points of interest for the Copper Dimension.
@@ -143,7 +143,6 @@ const P = {
   grass: "pa:copper_grass",
   patina: "pa:copper_patina",
   bricks: "pa:copper_bricks",
-  lamp: "pa:copper_lamp",
   wood: "pa:copper_wood",
   leaves: "pa:copper_leaves",
   // vanilla copper family
@@ -176,6 +175,14 @@ const P = {
 function setBlock(dimension, x, y, z, id) {
   try {
     if (y <= WORLD_MIN_Y || y >= WORLD_MAX_Y) return;
+    // Copper bulbs are the pack's lamp: place them already lit, so a landmark
+    // reads as inhabited rather than dark until a keeper walks past.
+    if (id === "minecraft:copper_bulb") {
+      dimension
+        .getBlock({ x, y, z })
+        ?.setPermutation(BlockPermutation.resolve(id).withState("lit", true));
+      return;
+    }
     dimension.getBlock({ x, y, z })?.setType(id);
   } catch {
     // Chunk unloaded mid-build; accept a partial landmark rather than throwing
@@ -246,7 +253,7 @@ function buildShelter(dimension, x, y, z) {
 
   // A lamp post and raw-copper boulders outside read as a worked camp.
   setBlock(dimension, x + half + 1, y + 1, z, P.wood);
-  setBlock(dimension, x + half + 1, y + 2, z, P.lamp);
+  setBlock(dimension, x + half + 1, y + 2, z, P.bulb);
   setBlock(dimension, x - half - 1, y + 1, z, P.raw);
   setBlock(dimension, x - half - 1, y + 2, z, P.oxidized);
 }
@@ -287,19 +294,21 @@ function buildVillage(dimension, x, y, z) {
   setBlock(dimension, x + 3, y + 1, z + 3, P.statue);
   setBlock(dimension, x - 3, y + 1, z - 3, P.bars);
 
-  // Villagers and an iron golem to bring the place alive, deferred so the ground
-  // under them has settled.
+  // Copper villagers and a copper golem bring the place alive, deferred so the
+  // ground under them has settled. The pack's own villager is used rather than
+  // the vanilla one, so the village trades in copper, not in the overworld's
+  // goods.
   system.run(() => {
     for (let i = 0; i < huts.length; i++) {
       const [ox, oz] = huts[i];
       try {
-        dimension.spawnEntity("minecraft:villager", { x: x + ox + 0.5, y: y + 1, z: z + oz + 0.5 });
+        dimension.spawnEntity("pa:copper_villager", { x: x + ox + 0.5, y: y + 1, z: z + oz + 0.5 });
       } catch {
         // Chunk gone; fewer villagers is not worth an error.
       }
     }
     try {
-      dimension.spawnEntity("minecraft:iron_golem", { x: x + 0.5, y: y + 1, z: z + 0.5 });
+      dimension.spawnEntity("minecraft:copper_golem", { x: x + 0.5, y: y + 1, z: z + 0.5 });
     } catch {
       // Same as above.
     }
@@ -367,7 +376,7 @@ function buildAncientCity(dimension, x, y, z) {
     for (let dy = 0; dy < top; dy++) {
       setBlock(dimension, x + px, y + dy, z + pz, random(px + dy, pz, 0x19) < 0.35 ? P.chiseled : P.cut);
     }
-    if (top === height) setBlock(dimension, x + px, y + height, z + pz, P.lamp);
+    if (top === height) setBlock(dimension, x + px, y + height, z + pz, P.bulb);
   }
 
   // Patina creeping from two corners — the copper weathering back to green.

@@ -35,12 +35,55 @@ const OXIDIZED_STONE = "pa:oxidized_copper_stone";
 const SOIL = "pa:copper_soil";
 const PATINA = "pa:copper_patina";
 const BRICKS = "pa:copper_bricks";
-const LAMP_BLOCK = "pa:copper_lamp";
+const LAMP_BLOCK = "minecraft:copper_bulb";
 const GRASS = "pa:copper_grass";
 const LEAVES = "pa:copper_leaves";
 const LOG = "pa:copper_wood";
 const FLUID_A = "pa:fluid_copper";
 const FLUID_B = "pa:fluid_copper_oxidized";
+
+/* Copper flora: the cross-rendered ground cover and the sapling. */
+const FERN = "pa:copper_fern";
+const BLOOM = "pa:copper_bloom";
+const FUNGUS = "pa:copper_fungus";
+const SAPLING = "pa:custom_sapling_copper";
+
+/*
+ * Round-7 flora. The herbs join the fern/bloom/fungus in the ground cover, the
+ * bushes are scattered in the temperate biomes, and two more tree species join
+ * the copper tree, each keyed to a climate so a forest has more than one canopy.
+ */
+const CLEMATIS = "pa:copper_clematis";
+const LUNGWORT = "pa:copper_lungwort";
+const THISTLE = "pa:copper_thistle";
+const LICHEN = "pa:copper_lichen";
+const BERRY_BUSH = "pa:copper_berry_bush";
+const AZALEA = "pa:copper_azalea";
+
+/* Underwater flora: these stand on the seabed and reach up through the fluid. */
+const SEAGRASS = "pa:copper_seagrass";
+const KELP = "pa:copper_kelp";
+const CORAL = "pa:copper_coral";
+
+/* Second and third tree species: birch-like vermilion, spruce-like verdigris. */
+const VERMILION_WOOD = "pa:vermilion_wood";
+const VERMILION_LEAVES = "pa:vermilion_leaves";
+const VERMILION_SAPLING = "pa:vermilion_sapling";
+const VERDIGRIS_WOOD = "pa:verdigris_wood";
+const VERDIGRIS_LEAVES = "pa:verdigris_leaves";
+const VERDIGRIS_SAPLING = "pa:verdigris_sapling";
+
+/*
+ * Indicative ore. The plain ore hides its companion metals; these three show
+ * them, so a vein can be read before it is broken. `oreAt` picks a variant by a
+ * roll, which is what makes a wall advertise what a lucky strike it is.
+ */
+const ORE_IRON = "pa:copper_ore_iron";
+const ORE_GOLD = "pa:copper_ore_gold";
+const ORE_GEM = "pa:copper_ore_gem";
+const DEEPSLATE_ORE_IRON = "pa:deepslate_copper_ore_iron";
+const DEEPSLATE_ORE_GOLD = "pa:deepslate_copper_ore_gold";
+const DEEPSLATE_ORE_GEM = "pa:deepslate_copper_ore_gem";
 
 /* The three custom copper stones, ordered fresh -> oxidized like the vanilla
  * family, so a biome can pick the stage its rock is in. */
@@ -97,6 +140,9 @@ const RAW_COPPER = "minecraft:raw_copper_block";
  * beside it: when mined it yields raw copper plus the metals that historically
  * travel with copper — iron, gold, and the odd gem — so prospecting the copper
  * caves pays in more than one metal.
+ *
+ * The lamp post cap is vanilla's own copper bulb rather than a bespoke lamp, so
+ * the light matches the copper family's oxidation stages for free.
  */
 const COPPER_ORE = "pa:copper_ore";
 const DEEPSLATE_COPPER_ORE = "pa:deepslate_copper_ore";
@@ -173,10 +219,22 @@ function lanternAt(biome, x, z) {
  * Copper ore veins. The dimension's own ore, so a cave wall yields copper and a
  * companion metal at once. Deepslate ore sits below y=0 where the rock turns
  * dark, matching how the rest of the world grades.
+ *
+ * Most of the vein is the plain ore, which keeps the metal a surprise. A share
+ * of it is an indicative variant instead — its texture carries the companion
+ * metal — so a wall can be read before it is broken, and a lucky strike can be
+ * picked out from across a cave.
  */
 function oreAt(biome, x, y, z) {
   const roll = random2(x * 31 + y, z * 17 - y, 0x0e);
-  if (roll < 0.35) return permutation(y < 0 ? DEEPSLATE_COPPER_ORE : COPPER_ORE);
+  if (roll < 0.30) {
+    const deep = y < 0;
+    const variant = random2(x * 13 - y, z * 7 + y, 0x0f);
+    if (variant < 0.40) return permutation(deep ? DEEPSLATE_ORE_IRON : ORE_IRON);
+    if (variant < 0.75) return permutation(deep ? DEEPSLATE_ORE_GOLD : ORE_GOLD);
+    if (variant < 0.95) return permutation(deep ? DEEPSLATE_ORE_GEM : ORE_GEM);
+    return permutation(deep ? DEEPSLATE_COPPER_ORE : COPPER_ORE);
+  }
   return stoneAt(biome);
 }
 
@@ -407,6 +465,31 @@ function isTreeAt(x, z, biome) {
   return random2(x, z, 0x5ab) < density;
 }
 
+/*
+ * Which tree grows on a column. The copper tree dominates the wet forest, but a
+ * warmer forest leans to vermilion and a colder one to verdigris, so a single
+ * biome shows more than one canopy. Each species carries its own wood, leaves
+ * and sapling so growth and shape stay consistent.
+ */
+const COPPER_TREE = { wood: LOG, leaves: LEAVES, sapling: SAPLING };
+const VERMILION_TREE = { wood: VERMILION_WOOD, leaves: VERMILION_LEAVES, sapling: VERMILION_SAPLING };
+const VERDIGRIS_TREE = { wood: VERDIGRIS_WOOD, leaves: VERDIGRIS_LEAVES, sapling: VERDIGRIS_SAPLING };
+
+function treeSpeciesAt(x, z, biome) {
+  const temp = temperature(x, z);
+  const pick = random2(x, z, 0x5ac);
+  if (biome === FOREST) {
+    if (temp > 0.15 && pick < 0.45) return VERMILION_TREE;
+    if (temp < -0.15 && pick < 0.45) return VERDIGRIS_TREE;
+    return pick < 0.2 ? VERMILION_TREE : COPPER_TREE;
+  }
+  if (biome === SWAMP) return pick < 0.25 ? VERDIGRIS_TREE : COPPER_TREE;
+  if (biome === SNOW) return VERDIGRIS_TREE;
+  if (biome === PLAIN) return pick < 0.4 ? VERMILION_TREE : COPPER_TREE;
+  if (biome === MUSHROOM) return pick < 0.5 ? VERDIGRIS_TREE : COPPER_TREE;
+  return COPPER_TREE;
+}
+
 /** Carves the cave network out of one already-solid column. */
 function carveColumn(dimension, x, z, bottom, top) {
   if (!caveColumn(x, z)) return;
@@ -534,30 +617,107 @@ function decorateTile(dimension, tileX, tileZ) {
  * carpet the biome. The flavour is copper: lamp posts on their own copper rock,
  * patina and raw-copper clusters, and a copper grate skylight where a cave
  * mouth would be.
+ *
+ * The flora is deliberately varied per biome — five cross-rendered herbs plus
+ * the fern/bloom/fungus, the odd copper sapling, and two bushes — so a walk
+ * reads as a landscape rather than one repeated prop. Lamp posts are kept scarce
+ * (roughly one per 100-300 columns) so they mark a path instead of lighting up
+ * the whole biome.
  */
 function decorateColumn(dimension, x, top, z, biome) {
   const ground = dimension.getBlock({ x, y: top, z });
   if (!ground || ground.isAir || ground.isLiquid) return;
 
   const roll = random2(x * 11, z * 17, 0x8a);
+  const sprout = random2(x * 5, z * 23, 0xbb);
+  const herb = pickHerb(x, z, biome);
 
   if (biome === MUSHROOM) {
-    if (roll < 0.03) placeLampPost(dimension, x, top, z);
+    if (roll < 0.01) placeLampPost(dimension, x, top, z);
+    else if (sprout < 0.14) setCover(dimension, x, top, z, FUNGUS);
+    else if (sprout < 0.17) setCover(dimension, x, top, z, SAPLING);
+    else if (sprout < 0.24) setCover(dimension, x, top, z, herb);
     return;
   }
   if (biome === BADLANDS) {
-    if (roll < 0.02) placeLampPost(dimension, x, top, z);
+    if (roll < 0.007) placeLampPost(dimension, x, top, z);
     else if (roll < 0.05) setCover(dimension, x, top, z, PATINA);
+    else if (sprout < 0.05) setCover(dimension, x, top, z, BLOOM);
+    else if (sprout < 0.09) setCover(dimension, x, top, z, THISTLE);
     return;
   }
   if (biome === SNOW) {
     setCover(dimension, x, top, z, SNOW_LAYER);
+    if (sprout < 0.03) setCover(dimension, x, top + 1, z, FERN);
+    else if (sprout < 0.05) setCover(dimension, x, top + 1, z, LUNGWORT);
     return;
   }
-  if (biome === PLAIN || biome === FOREST) {
-    if (roll < 0.008) placeLampPost(dimension, x, top, z);
-    else if (roll < 0.03) setCover(dimension, x, top, z, PATINA);
+  if (biome === SWAMP) {
+    if (sprout < 0.2) setCover(dimension, x, top, z, FERN);
+    else if (sprout < 0.26) setCover(dimension, x, top, z, FUNGUS);
+    else if (sprout < 0.3) setCover(dimension, x, top, z, SAPLING);
+    else if (sprout < 0.36) placeBush(dimension, x, top, z, BERRY_BUSH);
+    else if (sprout < 0.40) setCover(dimension, x, top, z, LICHEN);
+    return;
   }
+  if (biome === FOREST) {
+    if (roll < 0.0025) placeLampPost(dimension, x, top, z);
+    else if (sprout < 0.08) setCover(dimension, x, top, z, FERN);
+    else if (sprout < 0.12) setCover(dimension, x, top, z, BLOOM);
+    else if (sprout < 0.14) setCover(dimension, x, top, z, SAPLING);
+    else if (sprout < 0.19) setCover(dimension, x, top, z, herb);
+    else if (sprout < 0.22) placeBush(dimension, x, top, z, AZALEA);
+    else if (sprout < 0.25) placeBush(dimension, x, top, z, BERRY_BUSH);
+    return;
+  }
+  if (biome === PLAIN || biome === BEACH) {
+    if (roll < 0.002) placeLampPost(dimension, x, top, z);
+    else if (roll < 0.03) setCover(dimension, x, top, z, PATINA);
+    else if (sprout < 0.05) setCover(dimension, x, top, z, FERN);
+    else if (sprout < 0.08) setCover(dimension, x, top, z, BLOOM);
+    else if (sprout < 0.12) setCover(dimension, x, top, z, herb);
+    else if (sprout < 0.14) setCover(dimension, x, top, z, LICHEN);
+    return;
+  }
+  if (biome === MOUNTAIN) {
+    if (sprout < 0.04) setCover(dimension, x, top, z, FERN);
+    else if (sprout < 0.06) setCover(dimension, x, top, z, THISTLE);
+    else if (sprout < 0.08) setCover(dimension, x, top, z, LICHEN);
+  }
+}
+
+/*
+ * The herb a temperate column grows, if it grows one. A single roll picks among
+ * the five, so a meadow mixes them rather than repeating one flower, and the
+ * biome biases which one is commonest.
+ */
+function pickHerb(x, z, biome) {
+  const roll = random2(x * 3, z * 5, 0xbc);
+  if (biome === PLAIN || biome === BEACH) {
+    if (roll < 0.35) return CLEMATIS;
+    if (roll < 0.6) return THISTLE;
+    if (roll < 0.8) return LUNGWORT;
+    return LICHEN;
+  }
+  if (roll < 0.4) return LUNGWORT;
+  if (roll < 0.7) return CLEMATIS;
+  if (roll < 0.9) return LICHEN;
+  return THISTLE;
+}
+
+/** A two-block bush: a leafy crown on a short woody stem, both in copper. */
+function placeBush(dimension, x, top, z, typeId) {
+  const stem = dimension.getBlock({ x, y: top + 1, z });
+  const crown = dimension.getBlock({ x, y: top + 2, z });
+  if (!stem || !stem.isAir) return;
+  if (crown && !crown.isAir) {
+    // No headroom; a berry bush is a single block and can still go down.
+    if (typeId !== BERRY_BUSH) return;
+    stem.setType(typeId);
+    return;
+  }
+  stem.setType(typeId === BERRY_BUSH ? BERRY_BUSH : LOG);
+  if (crown) crown.setType(typeId === BERRY_BUSH ? BERRY_BUSH : typeId);
 }
 
 /** Puts a single block of cover on top of the column, if the space is free. */
@@ -575,7 +735,11 @@ function placeLampPost(dimension, x, top, z) {
     block.setType(CONNECTOR);
   }
   const cap = dimension.getBlock({ x, y: top + height + 1, z });
-  if (cap && cap.isAir) cap.setType(LAMP_BLOCK);
+  if (cap && cap.isAir) {
+    // The bulb is the lamp: it is placed already lit, so a post is a landmark
+    // even before a keeper passes, and a shade can dim it again.
+    cap.setPermutation(BlockPermutation.resolve(LAMP_BLOCK).withState("lit", true));
+  }
 }
 
 /** Ocean: both fluids, laid down as sources up to sea level. */
@@ -586,6 +750,33 @@ function fillSeas(dimension, x, z, floorY) {
   dimension.fillBlocks(new BlockVolume(from, to), deep > 0 ? fluidA() : fluidB(), {
     ignoreChunkBoundErrors: true,
   });
+  plantSeabed(dimension, x, floorY, z);
+}
+
+/*
+ * The three underwater plants. They are written into the fluid just above the
+ * bed, so a shallow sea carries a bed of seagrass and coral and a deep one grows
+ * kelp partway to the surface. Only fluid is replaced, so none of them floats
+ * over the seabed or eats a block a swimmer needs.
+ */
+function plantSeabed(dimension, x, floorY, z) {
+  const depth = SEA_LEVEL - floorY;
+  if (depth < 2) return;
+  const roll = random2(x * 19, z * 29, 0x7a);
+  if (roll > 0.22) return;
+
+  const kind = random2(x * 7, z * 11, 0x7b);
+  const plant = kind < 0.5 ? SEAGRASS : kind < 0.8 ? CORAL : KELP;
+  // Coral keeps to the shallows; kelp is the deep one and grows taller.
+  if (plant === CORAL && depth > 8) return;
+  if (plant === KELP && depth < 6) return;
+
+  const height = plant === KELP ? Math.min(depth - 1, 3 + Math.floor(random2(x, z, 0x7c) * 4)) : 1;
+  for (let i = 1; i <= height; i++) {
+    const block = dimension.getBlock({ x, y: floorY + i, z });
+    if (!block || !(block.isLiquid || block.typeId === "minecraft:water")) return;
+    block.setType(plant);
+  }
 }
 
 /** Occasional surface pools of the fluid on land, so both occur inland too. */
@@ -598,10 +789,11 @@ function scatterPool(dimension, x, z, top, biome) {
   dimension.getBlock({ x, y: top, z })?.setPermutation(pool > wetBand + 0.085 ? fluidB() : fluidA());
 }
 
-function placeTree(dimension, x, groundY, z, biome) {
+function placeTree(dimension, x, groundY, z, biome, species) {
+  const tree = species || treeSpeciesAt(x, z, biome);
   const trunk = 5 + Math.floor(random2(x, z, 0x1f) * 3);
   for (let i = 1; i <= trunk; i++) {
-    dimension.getBlock({ x, y: groundY + i, z })?.setPermutation(log());
+    dimension.getBlock({ x, y: groundY + i, z })?.setPermutation(permutation(tree.wood));
   }
 
   const top = groundY + trunk;
@@ -611,11 +803,11 @@ function placeTree(dimension, x, groundY, z, biome) {
       for (let oz = -radius; oz <= radius; oz++) {
         if (ox === 0 && oz === 0 && dy <= 0) continue;
         const block = dimension.getBlock({ x: x + ox, y: top + dy, z: z + oz });
-        if (block && block.isAir) block.setPermutation(leaves());
+        if (block && block.isAir) block.setPermutation(permutation(tree.leaves));
       }
     }
   }
-  dimension.getBlock({ x, y: top + 1, z })?.setPermutation(leaves());
+  dimension.getBlock({ x, y: top + 1, z })?.setPermutation(permutation(tree.leaves));
 
   hangLanterns(dimension, x, top, z, biome);
 }

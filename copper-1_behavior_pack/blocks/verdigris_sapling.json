@@ -1,0 +1,67 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:block": {
+    "description": {
+      "identifier": "pa:verdigris_sapling",
+      "menu_category": {
+        "category": "none"
+      }
+    },
+    "components": {
+      "minecraft:flammable": {
+        "catch_chance_modifier": 5,
+        "destroy_chance_modifier": 20
+      },
+      "minecraft:collision_box": false,
+      "minecraft:light_dampening": 0,
+      "minecraft:destructible_by_mining": true,
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 0.0
+      },
+      "minecraft:geometry": "minecraft:geometry.cross",
+      "minecraft:loot": "loot_tables/blocks/verdigris_sapling.json",
+      "minecraft:map_color": {
+        "color": "#FFFFFF",
+        "tint_method": "default_foliage"
+      },
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "pa_verdigris_sapling",
+          "render_method": "alpha_test_to_opaque",
+          "tint_method": "default_foliage"
+        }
+      },
+      "minecraft:placement_filter": {
+        "conditions": [
+          {
+            "block_filter": [
+              "pa:copper_grass",
+              "pa:copper_soil",
+              "pa:copper_patina",
+              "pa:copper_stone",
+              "pa:weathered_copper_stone",
+              "pa:oxidized_copper_stone",
+              "minecraft:moss_block",
+              "minecraft:mud",
+              "minecraft:clay",
+              "minecraft:sand",
+              "minecraft:grass_block",
+              "minecraft:dirt"
+            ],
+            "allowed_faces": [
+              "up"
+            ]
+          }
+        ]
+      },
+      "minecraft:tick": {
+        "interval_range": [
+          40,
+          120
+        ],
+        "looping": true
+      },
+      "pa_verdigris_sapling:trigger": {}
+    }
+  }
+}

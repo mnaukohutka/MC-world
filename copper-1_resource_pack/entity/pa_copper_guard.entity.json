@@ -1,0 +1,35 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "pa:copper_guard",
+      "materials": {
+        "default": "goat"
+      },
+      "textures": {
+        "default": "textures/entity/pa_mobs/copper_guard"
+      },
+      "geometry": {
+        "default": "geometry.goat"
+      },
+      "scripts": {
+        "animate": [
+          "walk",
+          "look_at_target"
+        ]
+      },
+      "animations": {
+        "walk": "animation.goat.walk",
+        "look_at_target": "animation.goat.look_at_target"
+      },
+      "animation_controllers": null,
+      "render_controllers": [
+        "controller.render.default"
+      ],
+      "spawn_egg": {
+        "base_color": "#b4682e",
+        "overlay_color": "#3b2418"
+      }
+    }
+  }
+}

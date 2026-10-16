@@ -1,0 +1,21 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "pa:copper_bat",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/entity/pa_mobs/copper_bat" },
+      "geometry": { "default": "geometry.bat_v2" },
+      "scripts": {
+        "animate": [ "move" ]
+      },
+      "animations": {
+        "resting": "animation.bat.resting",
+        "flying": "animation.bat.flying",
+        "move": "controller.animation.bat.move"
+      },
+      "render_controllers": [ "controller.render.default" ],
+      "spawn_egg": { "base_color": "#b4682e", "overlay_color": "#3b2418" }
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "pa:copper_boar",
+      "materials": {
+        "default": "pig"
+      },
+      "textures": {
+        "default": "textures/entity/pa_mobs/copper_boar"
+      },
+      "geometry": {
+        "default": "geometry.pig"
+      },
+      "scripts": {
+        "animate": [
+          "setup",
+          {
+            "walk": "query.modified_move_speed"
+          },
+          "look_at_target"
+        ]
+      },
+      "animations": {
+        "setup": "animation.pig.setup.v1.0",
+        "walk": "animation.quadruped.walk",
+        "look_at_target": "animation.common.look_at_target"
+      },
+      "animation_controllers": null,
+      "render_controllers": [
+        "controller.render.default"
+      ],
+      "spawn_egg": {
+        "base_color": "#b4682e",
+        "overlay_color": "#d18749"
+      }
+    }
+  }
+}
