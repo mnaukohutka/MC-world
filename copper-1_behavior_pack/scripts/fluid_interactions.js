@@ -9,6 +9,7 @@ import { system, world } from "@minecraft/server";
 
 const FLUID_COPPER = "pa:fluid_copper";
 const FLUID_OXIDIZED = "pa:fluid_copper_oxidized";
+const COPPER_DIMENSION = "pa:copper_dimension";
 const WATER = "minecraft:water";
 const LAVA = "minecraft:lava";
 const HONEY = "minecraft:honey_block";
@@ -74,12 +75,12 @@ system.runInterval(() => {
   // Získat dimenzi s cache a error handling
   if (!dimCache) {
     try {
-      dimCache = world.getDimension("minecraft:overworld");
+      dimCache = world.getDimension(COPPER_DIMENSION);
       dimErrorCount = 0;
     } catch (e) {
       dimErrorCount++;
       if (dimErrorCount === 1) {
-        console.warn("[copper-1] Dimension 'minecraft:overworld' not available yet, retrying...");
+        console.warn("[copper-1] Dimension not available yet, retrying...");
       }
       return;
     }
@@ -88,7 +89,7 @@ system.runInterval(() => {
   const dim = dimCache;
 
   for (const player of world.getPlayers()) {
-    if (player.dimension.id !== "minecraft:overworld") continue;
+    if (player.dimension.id !== COPPER_DIMENSION) continue;
 
     const { x, y, z } = player.location;
     const range = 8;

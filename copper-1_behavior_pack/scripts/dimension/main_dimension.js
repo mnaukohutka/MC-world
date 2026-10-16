@@ -2,14 +2,20 @@ import { registerDimension, installTravelMenu } from "./dimension";
 import "./dimension_rules";
 import "./dimension_portal";
 
+/*
+ * The Copper Dimension lives outside the Overworld. Terrain is generated in
+ * script (`dimension/terrain.js`) because a registered custom dimension always
+ * starts as void — the spawn pad in particular is laid down by
+ * `ensureDimensionReady` before the first teleport.
+ */
 registerDimension({
-  "typeId": "minecraft:overworld",
+  "typeId": "pa:copper_dimension",
   "label": "§6Copper Dimension§r",
   "showInMenu": true,
   "spawn": {"x": 0, "y": 70, "z": 0},
   "build": [],
   "rules": [],
-  "arrival": {"setRespawnHere": false, "fallAction": "teleportBack"},
+  "arrival": {"setRespawnHere": false, "fallBelowY": 40, "fallAction": "teleportBack"},
   "portal": {
     "blockId": "pa:dimension_copper_portal",
     "cooldownTicks": 300,
@@ -18,7 +24,7 @@ registerDimension({
     "particleId": "minecraft:basic_portal_particle",
     "frame": {
       "blockId": "pa:copper_portal",
-      "igniterId": "minecraft:copper_torch",
+      "igniterId": "minecraft:flint_and_steel",
       "minWidth": 2,
       "minHeight": 3
     }

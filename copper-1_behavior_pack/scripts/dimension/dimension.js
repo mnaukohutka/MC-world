@@ -11,24 +11,29 @@ import {
 } from "@minecraft/server";
 import { ActionFormData } from "@minecraft/server-ui";
 import { safeSubscribe } from '../utils/helper';
+import { buildSpawnPad, seedTerrain, startTerrainLoop } from "./terrain";
 
 /*
  * Custom dimension runtime.
  *
- * The dimensions themselves are registered by the behaviour pack's
- * `dimensions/*.json` files, which also set their height and default biome.
- * The game only offers the void generator, so the build recipe below is
- * everything players see. This module is a dispatcher: `runStep` has one arm
- * per step kind and `runAction` one per action kind, both keyed by the same
- * strings the Dart model emits. Adding a kind is one arm here and nothing else.
+ * A custom dimension is registered here, at startup, because scripting is the
+ * only way to create one on Bedrock — a `dimensions/*.json` file is a Java
+ * Edition feature and is ignored by Bedrock, which is why the pack used to log
+ * "no parser available" and "Failed to load dimension". Registration only ever
+ * produces a void generator, so `terrain.js` fills the space in around players.
  *
- * Requires Minecraft Bedrock 26.50+ (dimension JSON) and @minecraft/server
- * 2.10.0.
+ * This module is a dispatcher: `runStep` has one arm per step kind and
+ * `runAction` one per action kind. Adding a kind is one arm here and nothing
+ * else.
+ *
+ * Requires Minecraft Bedrock 1.21.80+ and @minecraft/server with beta APIs.
  */
 
 const registry = [];
 const built = new Set();
-
+const ready = new Set();
+const MIN_Y = -64;
+const MAX_Y = 320;
 /** Builds currently running, so concurrent arrivals wait on one of them. */
 const building = new Map();
 const modules = new Map();
@@ -95,9 +100,17 @@ function vec(v, fallback) {
 
 // ── Registration ───────────────────────────────────────────────────────────
 
-// No registerCustomDimension here: the dimension JSON already registers every
-// id, and registering one again from script is a conflict, not a fallback.
 safeSubscribe(system.beforeEvents.startup, (event) => {
+  // The dimension ids are declared here, not in a JSON file: Bedrock only
+  // builds the registry for script-created dimensions.
+  for (const config of registry) {
+    try {
+      event.dimensionRegistry.registerCustomDimension(config.typeId);
+    } catch (error) {
+      console.warn(`[dimension] could not register ${config.typeId}: ${error}`);
+    }
+  }
+
   if (!menu) return;
 
   if (menu.itemComponent) {
@@ -170,11 +183,53 @@ safeSubscribe(world.afterEvents.worldLoad, () => {
 async function buildAll() {
   for (const config of registry) {
     try {
+      await ensureDimensionReady(config);
       await ensureBuilt(config);
     } catch (error) {
       console.warn(`[dimension] could not build ${config.typeId}: ${error}`);
     }
   }
+}
+
+/**
+ * A custom dimension is registered empty, so the arrival pad has to exist before
+ * anything can be teleported into it. It is laid down once per world, then the
+ * surrounding terrain is generated around players as they explore.
+ */
+async function ensureDimensionReady(config) {
+  if (ready.has(config.typeId)) return;
+  ready.add(config.typeId);
+
+  try {
+    seedTerrain(world.seed);
+  } catch (error) {
+    console.warn(`[dimension] could not read the world seed: ${error}`);
+  }
+
+  const dimension = world.getDimension(config.typeId);
+  const spawn = vec(config.spawn);
+  const areaId = safeId(`${config.typeId}_spawn`);
+  const options = {
+    dimension,
+    from: { x: spawn.x - 12, y: MIN_Y, z: spawn.z - 12 },
+    to: { x: spawn.x + 12, y: MAX_Y, z: spawn.z + 12 },
+  };
+
+  if (!world.tickingAreaManager.hasCapacity(options)) {
+    console.warn(`[dimension] not enough ticking capacity to prepare ${config.typeId}`);
+    return;
+  }
+
+  await world.tickingAreaManager.createTickingArea(areaId, options);
+  try {
+    buildSpawnPad(dimension, spawn);
+  } finally {
+    if (world.tickingAreaManager.hasTickingArea(areaId)) {
+      world.tickingAreaManager.removeTickingArea(areaId);
+    }
+  }
+
+  startTerrainLoop(config.typeId);
 }
 
 export function ensureBuilt(config) {
@@ -644,6 +699,7 @@ export async function travelTo(player, config, arrival) {
       world.tickingAreaManager.removeTickingArea(areaId);
     }
     await world.tickingAreaManager.createTickingArea(areaId, areaOptions);
+    await ensureDimensionReady(config);
     await ensureBuilt(config);
 
     // Anything past here runs at least a tick after the player asked, and they

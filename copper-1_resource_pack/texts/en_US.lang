@@ -8,6 +8,14 @@ tile.pa:custom_sapling_copper.name=Sapling Copper tree
 tile.pa:custom_sapling_copper=Sapling Copper tree
 tile.pa:fluid_copper.name=Fluid copper
 tile.pa:fluid_copper=Fluid copper
+tile.pa:copper_stone.name=Copper Stone
+tile.pa:copper_stone=Copper Stone
+tile.pa:copper_grass.name=Copper Grass
+tile.pa:copper_grass=Copper Grass
+tile.pa:copper_leaves.name=Copper Leaves
+tile.pa:copper_leaves=Copper Leaves
+tile.pa:dimension_copper_portal.name=Copper Portal
+tile.pa:dimension_copper_portal=Copper Portal
 item.pa:custom_sapling_copper_placer.name=Sapling Copper tree
 item.pa:custom_sapling_copper_placer=Sapling Copper tree
 ## Comments can be added anywhere on a valid line by starting with '##'

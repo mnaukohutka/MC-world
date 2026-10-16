@@ -5,6 +5,7 @@ import { system, world } from "@minecraft/server";
  */
 
 const STRUCTURE_INTERVAL = 12000;
+const COPPER_DIMENSION = "pa:copper_dimension";
 
 const VANILLA_STRUCTURES = [
   ["minecraft:village_plains", 0.25, 100],
@@ -50,12 +51,12 @@ let dimErrorCount = 0;
 system.runInterval(() => {
   if (!dimCache) {
     try {
-      dimCache = world.getDimension("minecraft:overworld");
+      dimCache = world.getDimension(COPPER_DIMENSION);
       dimErrorCount = 0;
     } catch (e) {
       dimErrorCount++;
       if (dimErrorCount === 1) {
-        console.warn("[copper-1] Dimension 'minecraft:overworld' not available yet, retrying...");
+        console.warn("[copper-1] Dimension not available yet, retrying...");
       }
       return;
     }
@@ -64,7 +65,7 @@ system.runInterval(() => {
   const dim = dimCache;
 
   for (const player of world.getPlayers()) {
-    if (player.dimension.id !== "minecraft:overworld") continue;
+    if (player.dimension.id !== COPPER_DIMENSION) continue;
 
     const { x, z } = player.location;
 
